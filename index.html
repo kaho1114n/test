@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>求めリスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js" crossorigin></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin></script>
+<style>
+  :root{
+    --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB;
+    --gray-400:#9CA3AF; --gray-500:#6B7280; --gray-600:#4B5563;
+    --amber-100:#FEF3C7; --amber-700:#B45309;
+    --red-50:#FEF2F2; --red-100:#FEE2E2; --red-200:#FECACA; --red-400:#F87171; --red-500:#EF4444; --red-600:#DC2626;
+    --teal-100:#CCFBF1; --teal-700:#0F766E;
+    --indigo-100:#E0E7FF; --indigo-700:#4338CA;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:#FFFDFB; }
+  body{ font-family: 'Kosugi Maru', sans-serif; color:#1f2937; font-size:14px; }
+  button, input, select, textarea{ font-family: inherit; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+
+  .app-shell{ min-height:100vh; width:100%; transition: background-color .3s; }
+  .container{ max-width:28rem; margin:0 auto; padding:1.25rem 0.875rem 5rem; }
+  .header{ text-align:center; margin-bottom:1rem; }
+  .app-title{ font-size:1.375rem; font-weight:800; margin:0; }
+  .app-subtitle{ font-size:0.7rem; color:var(--gray-400); margin-top:0.2rem; }
+
+  .tab-bar{ display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1rem; }
+  .tab-btn{ flex-shrink:0; padding:0.4rem 0.7rem; border-radius:9999px; font-size:0.75rem; font-weight:700;
+    white-space:nowrap; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,.05); border:none; cursor:pointer; }
+
+  .flex-between{ display:flex; align-items:center; justify-content:space-between; margin-bottom:0.85rem; gap:0.5rem; }
+  .section-title{ font-size:1.2rem; font-weight:800; margin:0; }
+  .section-sub{ font-size:0.75rem; color:var(--gray-400); margin:0; }
+  .btn-primary{ padding:0.4rem 0.85rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer;
+    box-shadow:0 4px 6px rgba(0,0,0,.1); flex-shrink:0; font-size:0.8rem; }
+
+  .empty-state{ text-align:center; padding:2rem 0; color:var(--gray-400); }
+  .empty-emoji{ font-size:1.6rem; margin-bottom:0.4rem; }
+  .empty-text{ font-size:0.78rem; font-weight:700; margin:0; }
+
+  .pagination{ display:flex; align-items:center; justify-content:center; gap:0.6rem; margin:0.85rem 0 0.4rem; }
+  .page-btn{ padding:0.2rem 0.65rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1);
+    font-size:0.78rem; font-weight:700; color:var(--gray-500); border:none; cursor:pointer; }
+  .page-btn:disabled{ opacity:0.3; cursor:default; }
+  .page-label{ font-size:0.78rem; font-weight:700; color:var(--gray-500); }
+
+  .record-card{ border-radius:0.85rem; padding:0.75rem 0.85rem; margin-bottom:0.6rem; box-shadow:0 1px 2px rgba(0,0,0,.05);
+    border:2px solid transparent; background:#fff; transition:all .15s; }
+  .record-card--deceased{ background:var(--gray-100); border-color:var(--gray-200); opacity:0.6; filter:grayscale(1); }
+  .record-card-inner{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.4rem; }
+  .record-main{ flex:1; min-width:0; }
+  .badge-row{ display:flex; align-items:center; gap:0.3rem; margin-bottom:0.3rem; flex-wrap:wrap; }
+  .badge{ font-size:0.65rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:9999px; color:#fff; }
+  .badge-achieve{ background:var(--amber-100); color:var(--amber-700); }
+  .badge-danger{ background:var(--red-100); color:var(--red-600); }
+  .badge-deceased{ background:var(--gray-300); color:var(--gray-600); }
+  .badge-friend{ background:var(--teal-100); color:var(--teal-700); }
+  .badge-ff{ background:var(--indigo-100); color:var(--indigo-700); }
+  .pose-line{ display:flex; align-items:baseline; gap:0.4rem; flex-wrap:wrap; }
+  .pose-name{ font-weight:800; font-size:0.95rem; word-break:break-word; }
+  .pose-meta-inline{ font-size:0.72rem; color:var(--gray-500); word-break:break-word; }
+  .copy-username-btn{ border:none; background:transparent; cursor:pointer; font-size:0.7rem; padding:0 0.2rem; vertical-align:middle; line-height:1; }
+  .notes-line{ font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem; white-space:pre-wrap; }
+  .record-actions{ display:flex; flex-direction:column; gap:0.25rem; flex-shrink:0; }
+  .btn-edit, .btn-delete, .btn-copy{ font-size:0.68rem; padding:0.2rem 0.45rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; }
+  .btn-edit{ background:var(--gray-100); color:var(--gray-500); }
+  .btn-edit:hover{ background:var(--gray-200); }
+  .btn-delete{ background:var(--red-50); color:var(--red-400); }
+  .btn-delete:hover{ background:var(--red-100); }
+  .btn-copy{ background:#EAF6FE; color:#2C6BA0; }
+  .btn-copy:hover{ background:#D8EEFC; }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
+  .modal-card{ background:#fff; width:100%; max-height:92vh; overflow-y:auto; padding:1.1rem; border-radius:1.3rem 1.3rem 0 0; font-size:0.85rem; }
+  @media (min-width:640px){
+    .modal-overlay{ align-items:center; }
+    .modal-card{ max-width:26rem; border-radius:1.3rem; }
+  }
+  .modal-title{ font-size:1.05rem; font-weight:800; margin:0 0 0.85rem; }
+  .form-label{ display:block; font-size:0.75rem; font-weight:700; color:var(--gray-500); margin-bottom:0.2rem; }
+  .form-input, .form-select, .form-textarea{ width:100%; margin-bottom:0.65rem; padding:0.45rem 0.65rem;
+    border-radius:0.65rem; border:2px solid; outline:none; font-size:0.85rem; }
+  .form-textarea{ resize:none; }
+  .suggestions-wrap{ margin-bottom:0.65rem; min-height:1.3rem; }
+  .suggestion-list{ display:flex; flex-wrap:wrap; gap:0.2rem; margin-top:0.2rem; }
+  .suggestion-hint{ font-size:0.68rem; color:var(--gray-400); width:100%; }
+  .suggestion-chip{ font-size:0.68rem; padding:0.2rem 0.45rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
+  .checkbox-row{ display:flex; gap:0.85rem; margin-bottom:0.65rem; flex-wrap:wrap; }
+  .checkbox-label{ display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; font-weight:700; color:var(--gray-600); }
+  .checkbox-label input{ width:0.9rem; height:0.9rem; }
+  .modal-actions{ display:flex; gap:0.65rem; }
+  .btn-secondary{ flex:1; padding:0.45rem 0; border-radius:9999px; background:var(--gray-100); color:var(--gray-500); font-weight:700; border:none; cursor:pointer; font-size:0.85rem; }
+  .btn-save{ flex:1; padding:0.45rem 0; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); font-size:0.85rem; }
+
+  .filter-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; display:flex; flex-direction:column; gap:0.65rem; }
+  .filter-toggle-row{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+  .filter-toggle{ padding:0.35rem 0.65rem; border-radius:9999px; font-size:0.7rem; font-weight:700; border:2px solid var(--gray-200); background:#fff; color:var(--gray-500); cursor:pointer; }
+  .filter-toggle.active{ background:#FF9FB8; border-color:#FF9FB8; color:#fff; }
+  .filter-toggle.active-danger{ background:#EF4444; border-color:#EF4444; color:#fff; }
+
+  .io-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; }
+  .io-card-title{ font-weight:700; color:var(--gray-600); margin:0 0 0.4rem; font-size:0.85rem; }
+  .io-card-desc{ font-size:0.75rem; color:var(--gray-400); margin:0 0 0.65rem; }
+  .btn-export{ padding:0.45rem 0.85rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); font-size:0.8rem; }
+  .btn-danger-outline{ padding:0.45rem 0.85rem; border-radius:9999px; color:var(--red-500); font-weight:700; border:2px solid var(--red-200); background:var(--red-50); cursor:pointer; font-size:0.8rem; }
+  .io-message{ font-size:0.78rem; text-align:center; font-weight:700; color:var(--gray-500); }
+
+  .trade-section{ background:#fff; border-radius:0.85rem; padding:0.75rem 0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; }
+  .trade-section-title{ font-size:0.9rem; font-weight:800; margin:0 0 0.5rem; color:#4B5563; }
+  .trade-input-row{ display:flex; gap:0.3rem; margin-bottom:0.3rem; }
+  .trade-select{ flex:0 0 auto; width:4.6rem; padding:0.32rem 0.25rem; border-radius:0.55rem; border:2px solid; font-size:0.74rem; }
+  .trade-input{ flex:1; min-width:0; padding:0.32rem 0.5rem; border-radius:0.55rem; border:2px solid; font-size:0.74rem; outline:none; }
+  .trade-add-btn{ flex:0 0 auto; width:2rem; border-radius:0.55rem; border:none; color:#fff; font-weight:800; font-size:1rem; cursor:pointer; line-height:1; }
+  .trade-empty{ font-size:0.72rem; color:var(--gray-400); text-align:center; padding:0.4rem 0; margin:0; }
+  .trade-list{ display:flex; flex-direction:column; gap:0.25rem; max-height:340px; overflow-y:auto; margin-top:0.3rem; }
+  .trade-row-wrap{ display:flex; flex-direction:column; }
+  .trade-row{ display:flex; align-items:center; gap:0.35rem; padding:0.28rem 0.45rem; border-left:4px solid; background:#FAFAFA; border-radius:0.4rem; font-size:0.75rem; flex-wrap:wrap; }
+  .trade-row-member{ font-weight:700; flex-shrink:0; white-space:nowrap; }
+  .trade-row-pose{ flex:1; min-width:3.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trade-row-del{ flex-shrink:0; border:none; background:transparent; color:var(--gray-400); font-weight:800; cursor:pointer; font-size:0.78rem; padding:0 0.15rem; }
+  .trade-row-del:hover{ color:var(--red-500); }
+  .trade-match{ font-size:0.65rem; color:#B5477E; background:#FCE9F1; border-radius:0.4rem; padding:0.18rem 0.45rem; margin:0.15rem 0 0 0.55rem; }
+  .trade-post-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; }
+  .trade-output-area{ width:100%; margin:0.5rem 0; padding:0.5rem; border-radius:0.6rem; border:2px solid var(--gray-200); font-size:0.78rem; font-family:'Kosugi Maru', sans-serif; resize:vertical; }
+
+  .trade-row-btns{ display:flex; align-items:center; gap:0.3rem; flex-shrink:0; }
+  .trade-mini-btn{ font-size:0.7rem; padding:0.28rem 0.6rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; min-width:2.2rem; text-align:center; }
+  .trade-mini-btn--link{ background:#FDEEDB; color:#B45309; }
+  .trade-mini-btn--link:hover{ background:#FBE1BC; }
+  .trade-mini-btn--link.active{ background:#B45309; color:#fff; }
+  .trade-mini-btn--hold{ background:#EDE5FB; color:#6B46C1; }
+  .trade-mini-btn--hold:hover{ background:#E1D4F8; }
+  .trade-mini-btn--confirm{ background:#FDF6DE; color:#8F6F10; }
+  .trade-mini-btn--confirm:hover{ background:#FBEFC0; }
+  .trade-mini-btn--done{ background:#E6F7EC; color:#2F7D50; }
+  .trade-mini-btn--edit{ background:#E4F1FC; color:#2C6BA0; }
+  .trade-mini-btn--edit:hover{ background:#D2E9FB; }
+  .trade-info-line{ font-size:0.7rem; color:var(--gray-500); margin:0.15rem 0 0 0.5rem; }
+  .trade-mini-btn--done:hover{ background:#D3F0DE; }
+  .trade-order-btn{ font-size:0.65rem; padding:0.18rem 0.4rem; border-radius:9999px; border:none; background:var(--gray-100); color:var(--gray-500); cursor:pointer; }
+  .trade-order-btn:disabled{ opacity:0.3; cursor:default; }
+  .trade-date-row{ display:flex; align-items:center; gap:0.4rem; margin:0.3rem 0 0 0.5rem; }
+  .trade-date-input{ padding:0.22rem 0.4rem; border-radius:0.5rem; border:2px solid var(--gray-200); font-size:0.72rem; }
+
+  .trade-confirm-editor{ margin:0.3rem 0 0.3rem 0.4rem; padding:0.45rem 0.5rem; background:#FAFAFA; border-radius:0.5rem; border:1px dashed var(--gray-300); }
+  .trade-mode-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
+  .trade-amount-row{ display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem; }
+  .trade-amount-btn{ width:1.6rem; height:1.6rem; border-radius:9999px; border:none; background:var(--gray-200); font-weight:800; cursor:pointer; }
+  .trade-amount-value{ font-size:0.74rem; font-weight:700; color:var(--gray-600); }
+  .btn-save-mini{ padding:0.3rem 0.7rem; border-radius:9999px; border:none; background:#FF9FB8; color:#fff; font-weight:700; font-size:0.7rem; cursor:pointer; }
+
+  .trade-partner-block{ margin-top:0.35rem; }
+  .trade-partner-label{ display:block; font-size:0.68rem; font-weight:700; color:var(--gray-500); margin-bottom:0.2rem; }
+  .trade-partner-select{ width:100%; padding:0.32rem 0.5rem; border-radius:0.55rem; border:2px solid var(--gray-200); font-size:0.74rem; margin-bottom:0.35rem; }
+  .trade-partner-display{ font-size:0.7rem; color:var(--gray-400); margin:0 0 0.35rem; }
+  .trade-link-candidates{ display:flex; flex-direction:column; gap:0.25rem; max-height:180px; overflow-y:auto; margin-bottom:0.35rem; }
+  .trade-link-candidate{ text-align:left; padding:0.3rem 0.5rem; border-radius:0.5rem; border:2px solid; background:#fff; font-size:0.72rem; font-weight:700; color:var(--gray-600); cursor:pointer; }
+  .trade-link-candidate:hover{ background:#FAFAFA; }
+  .trade-partner-custom-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
+  .trade-partner-custom-row input{ flex:1; min-width:0; padding:0.32rem 0.5rem; border-radius:0.55rem; border:2px solid var(--gray-200); font-size:0.74rem; }
+
+  .trade-restore-btn{ font-size:0.65rem; padding:0.18rem 0.5rem; border-radius:9999px; border:none; background:#E4F1FC; color:#2C6BA0; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .trade-restore-btn:hover{ background:#D2E9FB; }
+
+  .trade-subsection{ margin-top:0.6rem; padding-top:0.5rem; border-top:1px dashed var(--gray-200); }
+  .trade-subsection-title{ font-size:0.78rem; font-weight:800; color:var(--gray-500); margin:0 0 0.35rem; }
+  .trade-confirm-row-wrap{ margin-bottom:0.3rem; }
+  .trade-confirm-row{ display:flex; justify-content:space-between; align-items:center; gap:0.4rem; padding:0.25rem 0.45rem; background:#FFF8FA; border-radius:0.4rem; font-size:0.72rem; flex-wrap:wrap; }
+  .trade-confirm-pose{ font-weight:700; color:var(--gray-600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trade-confirm-label{ font-weight:700; color:#B5477E; white-space:nowrap; }
+  .trade-done-origin{ font-size:0.7rem; flex-shrink:0; }
+  .trade-confirm-row-label{ font-size:0.68rem; color:#B5477E; margin:0.1rem 0 0 0.55rem; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ---------- データ定義 ----------
+const MEMBERS = [
+  { key: "oto", label: "おと", colorName: "紫", emoji: "🎧", accent: "#A98CDB", accentSoft: "#EDE5FB", text: "#5B3E9E" },
+  { key: "shima", label: "しま", colorName: "青", emoji: "🍊", accent: "#6FB3EE", accentSoft: "#E4F1FC", text: "#2C6BA0" },
+  { key: "gento", label: "げんと", colorName: "赤", emoji: "🍖", accent: "#EE8A9A", accentSoft: "#FCE6E9", text: "#B23D52" },
+  { key: "tora", label: "とら", colorName: "緑", emoji: "🐯", accent: "#7FCB9A", accentSoft: "#E6F7EC", text: "#2F7D50" },
+  { key: "shun", label: "しゅん", colorName: "黄", emoji: "⚡️", accent: "#E9C24A", accentSoft: "#FDF6DE", text: "#8F6F10" },
+  { key: "kakeru", label: "かける", colorName: "水", emoji: "🐬", accent: "#5DC3D1", accentSoft: "#E1F6F8", text: "#1E7D8C" },
+  { key: "komugi", label: "こむぎ", colorName: "桃", emoji: "🦋", accent: "#EE93BC", accentSoft: "#FCE9F1", text: "#B5477E" },
+];
+
+const DEFAULT_THEME = { accent: "#FF9FB8", accentSoft: "#FFF1F5", text: "#C24A6E" };
+
+const TABS = [
+  { key: "home", label: "ホーム", emoji: "🏠" },
+  { key: "search", label: "検索", emoji: "🔍" },
+  ...MEMBERS.map((m) => ({ key: m.key, label: m.label, emoji: m.emoji, member: m })),
+  { key: "trades", label: "本日の取引", emoji: "🔄" },
+  { key: "confirmed", label: "確定", emoji: "📝" },
+  { key: "io", label: "データ管理", emoji: "💾" },
+];
+
+const getTheme = (tabKey) => {
+  const m = MEMBERS.find((mm) => mm.key === tabKey);
+  return m || DEFAULT_THEME;
+};
+
+const PAGE_SIZE = 20;
+const STORAGE_KEY = "pose-tracker-records";
+
+// ---------- 文字列類似度（あいまい検索用） ----------
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+function similarity(a, b) {
+  const dist = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length, 1);
+  return 1 - dist / maxLen;
+}
+function getSuggestions(input, allNames) {
+  const q = input.trim().toLowerCase();
+  if (!q) return [];
+  return allNames
+    .filter((n) => n.toLowerCase() !== q)
+    .map((n) => ({ name: n, score: similarity(q, n.toLowerCase()), includes: n.toLowerCase().includes(q) }))
+    .filter((x) => x.score > 0.35 || x.includes)
+    .sort((a, b) => (b.includes - a.includes) || b.score - a.score)
+    .slice(0, 5)
+    .map((x) => x.name);
+}
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function formatRecordForCopy(record) {
+  const member = MEMBERS.find((m) => m.key === record.member);
+  const lines = [
+    `【${member ? member.label : record.member}】${record.poseName}`,
+    `ユーザー名: ${record.userName || "-"}`,
+    `名前: ${record.name || "-"}`,
+    `実績: ${record.hasAchievement ? "あり" : "なし"}`,
+    `危険フラグ: ${record.dangerFlag ? "あり" : "なし"}`,
+    `友達フラグ: ${record.friendFlag ? "あり" : "なし"}`,
+    `FFフラグ: ${record.ffFlag ? "あり" : "なし"}`,
+    `他界: ${record.deceased ? "あり" : "なし"}`,
+  ];
+  if (record.notes) lines.push(`備考: ${record.notes}`);
+  return lines.join("\n");
+}
+
+// ---------- ローカル保存 ----------
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("読み込みに失敗しました", e);
+    return [];
+  }
+}
+function saveRecords(records) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (e) {
+    console.error("保存に失敗しました", e);
+  }
+}
+
+const TRADES_STORAGE_KEY = "pose-tracker-trades-today";
+function loadTrades() {
+  try {
+    const raw = localStorage.getItem(TRADES_STORAGE_KEY);
+    if (!raw) return { got: [], want: [], confirmed: [], done: [] };
+    const parsed = JSON.parse(raw);
+    return {
+      got: Array.isArray(parsed.got) ? parsed.got : [],
+      want: Array.isArray(parsed.want) ? parsed.want : [],
+      confirmed: Array.isArray(parsed.confirmed) ? parsed.confirmed : [],
+      done: Array.isArray(parsed.done) ? parsed.done : [],
+    };
+  } catch (e) {
+    console.error("読み込みに失敗しました", e);
+    return { got: [], want: [], confirmed: [], done: [] };
+  }
+}
+function saveTrades(trades) {
+  try {
+    localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));
+  } catch (e) {
+    console.error("保存に失敗しました", e);
+  }
+}
+
+function formatConfirmLabel(origin, confirm) {
+  if (!confirm) return null;
+  if (confirm.mode === "exchange") {
+    const m = MEMBERS.find((mm) => mm.key === confirm.member);
+    return `交換: ${m ? m.colorName : ""} ${confirm.poseName}`;
+  }
+  if (confirm.mode === "price") {
+    return origin === "got" ? `譲: +${confirm.amount}枚` : `買取: +${confirm.amount}枚`;
+  }
+  return null;
+}
+
+// ---------- 小さな共通パーツ ----------
+function EmptyState({ text }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-emoji">🎀</div>
+      <p className="empty-text">{text}</p>
+    </div>
+  );
+}
+
+function Pagination({ page, setPage, totalItems }) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination">
+      <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="page-btn">＜</button>
+      <span className="page-label">{page} / {totalPages}</span>
+      <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="page-btn">＞</button>
+    </div>
+  );
+}
+
+function CopyUserNameButton({ userName }) {
+  const [copied, setCopied] = useState(false);
+  if (!userName) return null;
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(userName);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch (err) {
+      alert("コピーに失敗しました");
+    }
+  };
+  return (
+    <button type="button" onClick={handleClick} className="copy-username-btn" title="ユーザー名をコピー">
+      {copied ? "✅" : "📋"}
+    </button>
+  );
+}
+
+function RecordCard({ record, onDelete, onEdit, onDuplicate }) {
+  const member = MEMBERS.find((m) => m.key === record.member) || MEMBERS[0];
+  const deceased = record.deceased;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onDuplicate(record);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div
+      className={`record-card${deceased ? " record-card--deceased" : ""}`}
+      style={!deceased ? { borderColor: member.accentSoft } : {}}
+    >
+      <div className="record-card-inner">
+        <div className="record-main">
+          <div className="badge-row">
+            <span className="badge" style={{ background: deceased ? "#9CA3AF" : member.accent }}>
+              {member.emoji} {member.label}
+            </span>
+            {record.hasAchievement && <span className="badge badge-achieve">🏆 実績あり</span>}
+            {record.dangerFlag && <span className="badge badge-danger">⚠️ 危険</span>}
+            {record.friendFlag && <span className="badge badge-friend">🤝 友達</span>}
+            {record.ffFlag && <span className="badge badge-ff">🔁 FF</span>}
+            {deceased && <span className="badge badge-deceased">🕊️ 他界</span>}
+          </div>
+          <div className="pose-line">
+            <span className="pose-name" style={{ color: deceased ? "#6B7280" : member.text, fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>
+              {record.poseName}
+            </span>
+            <span className="pose-meta-inline">👤{record.userName || "-"}<CopyUserNameButton userName={record.userName} /> ／ 📛{record.name || "-"}</span>
+          </div>
+          {record.notes && <div className="notes-line">📝 {record.notes}</div>}
+        </div>
+        <div className="record-actions">
+          <button onClick={handleCopy} className="btn-copy">{copied ? "✅ 複製済" : "📋 コピー"}</button>
+          <button onClick={() => onEdit(record)} className="btn-edit">編集</button>
+          <button onClick={() => onDelete(record.id)} className="btn-delete">削除</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 追加・編集モーダル ----------
+function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
+  const [member, setMember] = useState(initial?.member || MEMBERS[0].key);
+  const [poseName, setPoseName] = useState(initial?.poseName || "");
+  const [userName, setUserName] = useState(initial?.userName || "");
+  const [name, setName] = useState(initial?.name || "");
+  const [hasAchievement, setHasAchievement] = useState(initial?.hasAchievement || false);
+  const [dangerFlag, setDangerFlag] = useState(initial?.dangerFlag || false);
+  const [friendFlag, setFriendFlag] = useState(initial?.friendFlag || false);
+  const [ffFlag, setFfFlag] = useState(initial?.ffFlag || false);
+  const [notes, setNotes] = useState(initial?.notes || "");
+  const [deceased, setDeceased] = useState(initial?.deceased || false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = useMemo(() => getSuggestions(poseName, allPoseNames), [poseName, allPoseNames]);
+  const theme = MEMBERS.find((m) => m.key === member);
+
+  const handleSubmit = () => {
+    if (!poseName.trim()) {
+      alert("ポーズ名を入力してください");
+      return;
+    }
+    onSave({
+      id: initial?.id,
+      member,
+      poseName: poseName.trim(),
+      userName: userName.trim(),
+      name: name.trim(),
+      hasAchievement,
+      dangerFlag,
+      friendFlag,
+      ffFlag,
+      notes: notes.trim(),
+      deceased,
+    });
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card">
+        <h2 className="modal-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: theme.text }}>
+          {initial ? "編集する ✏️" : "あたらしく登録 ✨"}
+        </h2>
+
+        <label className="form-label">メンバー</label>
+        <select value={member} onChange={(e) => setMember(e.target.value)} className="form-select" style={{ borderColor: theme.accentSoft }}>
+          {MEMBERS.map((m) => (
+            <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>
+          ))}
+        </select>
+
+        <label className="form-label">ポーズ名</label>
+        <input
+          value={poseName}
+          onChange={(e) => { setPoseName(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          placeholder="例：キラキラポーズ"
+          className="form-input"
+          style={{ borderColor: theme.accentSoft, marginBottom: "0.2rem" }}
+        />
+        <div className="suggestions-wrap">
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="suggestion-list">
+              <span className="suggestion-hint">似ているポーズ名：</span>
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setPoseName(s); setShowSuggestions(false); }}
+                  className="suggestion-chip"
+                  style={{ background: theme.accentSoft, color: theme.text }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <label className="form-label">ユーザー名</label>
+        <input value={userName} onChange={(e) => setUserName(e.target.value)} className="form-input" style={{ borderColor: theme.accentSoft }} />
+
+        <label className="form-label">名前</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} className="form-input" style={{ borderColor: theme.accentSoft }} />
+
+        <div className="checkbox-row">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={hasAchievement} onChange={(e) => setHasAchievement(e.target.checked)} />
+            🏆 実績あり
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={dangerFlag} onChange={(e) => setDangerFlag(e.target.checked)} />
+            ⚠️ 危険フラグ
+          </label>
+        </div>
+
+        <div className="checkbox-row">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={friendFlag} onChange={(e) => setFriendFlag(e.target.checked)} />
+            🤝 友達フラグ
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={ffFlag} onChange={(e) => setFfFlag(e.target.checked)} />
+            🔁 FFフラグ
+          </label>
+        </div>
+
+        <label className="form-label">備考欄</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="form-textarea" style={{ borderColor: theme.accentSoft }} />
+
+        <label className="checkbox-label" style={{ marginBottom: "1.1rem" }}>
+          <input type="checkbox" checked={deceased} onChange={(e) => setDeceased(e.target.checked)} />
+          🕊️ 他界フラグ
+        </label>
+
+        <div className="modal-actions">
+          <button onClick={onCancel} className="btn-secondary">キャンセル</button>
+          <button onClick={handleSubmit} className="btn-save" style={{ background: theme.accent }}>保存する</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 各タブ ----------
+function HomeTab({ records, onDelete, onEdit, onDuplicate, onAddClick }) {
+  const [page, setPage] = useState(1);
+  const sorted = useMemo(() => [...records].sort((a, b) => b.createdAt - a.createdAt), [records]);
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <div className="flex-between">
+        <div>
+          <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>ホーム 🏠</h2>
+          <p className="section-sub">ぜんぶで {records.length} けん</p>
+        </div>
+        <button onClick={onAddClick} className="btn-primary" style={{ background: DEFAULT_THEME.accent }}>＋ とうろく</button>
+      </div>
+      {sorted.length === 0 && <EmptyState text="まだデータがありません。「＋ とうろく」から追加してね！" />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
+      <Pagination page={page} setPage={setPage} totalItems={sorted.length} />
+    </div>
+  );
+}
+
+function SearchTab({ records, onDelete, onEdit, onDuplicate }) {
+  const [member, setMember] = useState("");
+  const [pose, setPose] = useState("");
+  const [excludeFriend, setExcludeFriend] = useState(false);
+  const [excludeFF, setExcludeFF] = useState(false);
+  const [dangerOnly, setDangerOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [member, pose, excludeFriend, excludeFF, dangerOnly]);
+  const filtered = useMemo(
+    () => records
+      .filter((r) => (!member || r.member === member))
+      .filter((r) => !pose.trim() || r.poseName.toLowerCase().includes(pose.trim().toLowerCase()))
+      .filter((r) => !excludeFriend || !r.friendFlag)
+      .filter((r) => !excludeFF || !r.ffFlag)
+      .filter((r) => !dangerOnly || r.dangerFlag)
+      .sort((a, b) => b.createdAt - a.createdAt),
+    [records, member, pose, excludeFriend, excludeFF, dangerOnly]
+  );
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>検索 🔍</h2>
+      <div className="filter-card">
+        <div>
+          <label className="form-label">メンバー（任意）</label>
+          <select value={member} onChange={(e) => setMember(e.target.value)} className="form-select" style={{ borderColor: DEFAULT_THEME.accentSoft, marginBottom: 0 }}>
+            <option value="">すべて</option>
+            {MEMBERS.map((m) => <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">ポーズ名（自由入力）</label>
+          <input value={pose} onChange={(e) => setPose(e.target.value)} placeholder="キーワードを入力" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft, marginBottom: 0 }} />
+        </div>
+        <div>
+          <label className="form-label">絞り込み</label>
+          <div className="filter-toggle-row">
+            <button type="button" onClick={() => setExcludeFriend((v) => !v)} className={`filter-toggle${excludeFriend ? " active" : ""}`}>🤝 友達を除く</button>
+            <button type="button" onClick={() => setExcludeFF((v) => !v)} className={`filter-toggle${excludeFF ? " active" : ""}`}>🔁 FFを除く</button>
+            <button type="button" onClick={() => setDangerOnly((v) => !v)} className={`filter-toggle${dangerOnly ? " active-danger" : ""}`}>⚠️ 危険のみ表示</button>
+          </div>
+        </div>
+      </div>
+      <p className="section-sub" style={{ marginBottom: "0.5rem" }}>{filtered.length} けん ヒット</p>
+      {filtered.length === 0 && <EmptyState text="条件に合うデータが見つかりませんでした" />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
+      <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
+    </div>
+  );
+}
+
+function MemberTab({ memberConfig, records, onDelete, onEdit, onDuplicate }) {
+  const [page, setPage] = useState(1);
+  const filtered = useMemo(
+    () => records.filter((r) => r.member === memberConfig.key).sort((a, b) => b.createdAt - a.createdAt),
+    [records, memberConfig.key]
+  );
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: memberConfig.text, marginBottom: "0.2rem" }}>
+        {memberConfig.emoji} {memberConfig.label}
+      </h2>
+      <p className="section-sub" style={{ marginBottom: "0.85rem" }}>{memberConfig.colorName}チーム ／ {filtered.length} けん</p>
+      {filtered.length === 0 && <EmptyState text={`${memberConfig.label}のデータはまだありません`} />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
+      <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
+    </div>
+  );
+}
+
+function IOTab({ records, onImport, onClearAll }) {
+  const [message, setMessage] = useState("");
+  const [exportMember, setExportMember] = useState(MEMBERS[0].key);
+  const fileRef = useRef(null);
+
+  const downloadJson = (data, filenameSuffix) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    a.download = `pose-data-${dateStr}${filenameSuffix ? "-" + filenameSuffix : ""}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    downloadJson(records, "");
+    setMessage("✅ エクスポートしました！");
+  };
+
+  const handleExportByMember = () => {
+    const memberConfig = MEMBERS.find((m) => m.key === exportMember);
+    const filtered = records.filter((r) => r.member === exportMember);
+    if (filtered.length === 0) {
+      setMessage(`⚠️ ${memberConfig.label}のデータがありません`);
+      return;
+    }
+    downloadJson(filtered, memberConfig.label);
+    setMessage(`✅ ${memberConfig.label}のデータ（${filtered.length}けん）をエクスポートしました！`);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error("形式エラー");
+
+        let working = [...records];
+        let addedCount = 0;
+        let updatedCount = 0;
+        let unchangedCount = 0;
+
+        data.forEach((d) => {
+          const normalized = {
+            member: MEMBERS.some((m) => m.key === d.member) ? d.member : MEMBERS[0].key,
+            poseName: d.poseName || "",
+            userName: d.userName || "",
+            name: d.name || "",
+            hasAchievement: !!d.hasAchievement,
+            dangerFlag: !!d.dangerFlag,
+            friendFlag: !!d.friendFlag,
+            ffFlag: !!d.ffFlag,
+            notes: d.notes || "",
+            deceased: !!d.deceased,
+          };
+
+          const isSameContent = (r) =>
+            r.member === normalized.member &&
+            r.poseName === normalized.poseName &&
+            r.userName === normalized.userName &&
+            r.name === normalized.name;
+
+          let targetIndex = d.id ? working.findIndex((r) => r.id === d.id) : -1;
+          if (targetIndex === -1) targetIndex = working.findIndex(isSameContent);
+
+          if (targetIndex !== -1) {
+            const existing = working[targetIndex];
+            const changed = Object.keys(normalized).some((key) => existing[key] !== normalized[key]);
+            if (changed) {
+              working[targetIndex] = { ...existing, ...normalized };
+              updatedCount++;
+            } else {
+              unchangedCount++;
+            }
+          } else {
+            const idAvailable = d.id && !working.some((r) => r.id === d.id);
+            working = [{ ...normalized, id: idAvailable ? d.id : makeId(), createdAt: d.createdAt || Date.now() }, ...working];
+            addedCount++;
+          }
+        });
+
+        onImport(working);
+        setMessage(`✅ 追加${addedCount}件 ／ 更新${updatedCount}件 ／ 変更なし${unchangedCount}件`);
+      } catch (err) {
+        setMessage("❌ 読み込みに失敗しました。JSONファイルを確認してください。");
+      }
+      if (fileRef.current) fileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>データ管理 💾</h2>
+      <div className="io-card">
+        <h3 className="io-card-title">エクスポート</h3>
+        <p className="io-card-desc">今のデータ（{records.length}けん）をJSONファイルとして保存します。</p>
+        <button onClick={handleExport} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>⬇️ エクスポートする</button>
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">メンバーを選んでエクスポート</h3>
+        <p className="io-card-desc">選んだメンバーのデータだけをJSONファイルとして保存します。</p>
+        <select value={exportMember} onChange={(e) => setExportMember(e.target.value)} className="form-select" style={{ borderColor: DEFAULT_THEME.accentSoft }}>
+          {MEMBERS.map((m) => (
+            <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>
+          ))}
+        </select>
+        <button onClick={handleExportByMember} className="btn-export" style={{ background: MEMBERS.find((m) => m.key === exportMember).accent }}>⬇️ このメンバーだけエクスポート</button>
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">インポート</h3>
+        <p className="io-card-desc">JSONファイルを選んでデータを読み込みます（既存データに追加されます）。</p>
+        <input ref={fileRef} type="file" accept="application/json" onChange={handleFileChange} />
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">全データ削除</h3>
+        <p className="io-card-desc">すべてのデータを削除します。この操作は取り消せません。</p>
+        <button onClick={onClearAll} className="btn-danger-outline">🗑️ 全部削除する</button>
+      </div>
+      {message && <p className="io-message">{message}</p>}
+    </div>
+  );
+}
+
+function TradeItemRow({ item, listKey, matches, otherItems, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onSetHoldFor, onConfirmLink }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState("exchange");
+  const [exMember, setExMember] = useState(MEMBERS[0].key);
+  const [exPose, setExPose] = useState("");
+  const [amount, setAmount] = useState(1);
+  const [partnerChoice, setPartnerChoice] = useState(() => (matches.length > 0 ? matches[0].id : "custom"));
+  const [customUserName, setCustomUserName] = useState("");
+  const [customName, setCustomName] = useState("");
+
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoChoice, setInfoChoice] = useState(() => {
+    if (item.userName || item.name) {
+      const found = matches.find((mt) => mt.userName === item.userName && mt.name === item.name);
+      if (found) return found.id;
+      return "custom";
+    }
+    return matches.length > 0 ? matches[0].id : "custom";
+  });
+  const [infoUserName, setInfoUserName] = useState(item.userName || "");
+  const [infoName, setInfoName] = useState(item.name || "");
+
+  const [linking, setLinking] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [holdSelected, setHoldSelected] = useState(() => (item.holdFor || []).map((h) => h.key));
+  const [holdCustoms, setHoldCustoms] = useState(() => (item.holdFor || []).filter((h) => h.type === "custom"));
+  const [holdCustomUserName, setHoldCustomUserName] = useState("");
+  const [holdCustomName, setHoldCustomName] = useState("");
+
+  const otherListLabel = listKey === "got" ? "探してるものリスト" : "持っているものリスト";
+
+  const exchangePlaceholder = "交換するハピカ";
+  const priceSuffix = listKey === "want" ? "で買い取る" : "で譲る";
+
+  const handleSaveInfo = () => {
+    let userName = "";
+    let name = "";
+    if (infoChoice === "custom") {
+      userName = infoUserName.trim();
+      name = infoName.trim();
+    } else {
+      const match = matches.find((mt) => mt.id === infoChoice);
+      userName = match ? match.userName : "";
+      name = match ? match.name : "";
+    }
+    onUpdateInfo(listKey, item.id, { userName, name });
+    setEditingInfo(false);
+  };
+
+  const handleSaveConfirm = () => {
+    let partnerUserName = "";
+    let partnerName = "";
+    if (partnerChoice === "custom") {
+      partnerUserName = customUserName.trim();
+      partnerName = customName.trim();
+    } else {
+      const match = matches.find((mm) => mm.id === partnerChoice);
+      partnerUserName = match ? match.userName : "";
+      partnerName = match ? match.name : "";
+    }
+
+    if (mode === "exchange") {
+      if (!exPose.trim()) {
+        alert(`${exchangePlaceholder}を入力してください`);
+        return;
+      }
+      onConfirm(listKey, item.id, { mode: "exchange", member: exMember, poseName: exPose.trim(), partnerUserName, partnerName });
+    } else {
+      onConfirm(listKey, item.id, { mode: "price", amount, partnerUserName, partnerName });
+    }
+    setEditing(false);
+    setExPose("");
+    setAmount(1);
+  };
+
+  const handlePickLink = (candidate) => {
+    onSetLinked(listKey, item.id, {
+      member: candidate.member,
+      poseName: candidate.poseName,
+      partnerUserName: candidate.userName || "",
+      partnerName: candidate.name || "",
+    });
+    setLinking(false);
+  };
+
+  const handleClearLink = () => {
+    onSetLinked(listKey, item.id, null);
+    setLinking(false);
+  };
+
+  const toggleHoldMatch = (key) => {
+    setHoldSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  const addHoldCustom = () => {
+    if (!holdCustomUserName.trim() && !holdCustomName.trim()) return;
+    setHoldCustoms((prev) => [...prev, { type: "custom", userName: holdCustomUserName.trim(), name: holdCustomName.trim() }]);
+    setHoldCustomUserName("");
+    setHoldCustomName("");
+  };
+
+  const removeHoldCustom = (idx) => {
+    setHoldCustoms((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveHold = () => {
+    const fromMatches = matches
+      .filter((mt) => holdSelected.includes(mt.id))
+      .map((mt) => ({ type: "match", key: mt.id, userName: mt.userName, name: mt.name }));
+    onSetHoldFor(item.id, [...fromMatches, ...holdCustoms]);
+    setHolding(false);
+  };
+
+  return (
+    <div className="trade-row-wrap">
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <div className="trade-row-btns">
+          <button onClick={() => setLinking((v) => !v)} className={`trade-mini-btn trade-mini-btn--link${item.linked ? " active" : ""}`}>🔺</button>
+          {listKey === "got" && (
+            <button onClick={() => setHolding((v) => !v)} className="trade-mini-btn trade-mini-btn--hold">🔖 取置</button>
+          )}
+          {listKey === "want" && (
+            <button onClick={() => setEditingInfo((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
+          )}
+          <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--confirm">確定</button>
+          <button onClick={() => onComplete(listKey, item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
+          <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
+        </div>
+      </div>
+
+      {item.linked && !linking && (
+        <div className="trade-info-line">
+          🔺 {MEMBERS.find((mm) => mm.key === item.linked.member)?.emoji}{MEMBERS.find((mm) => mm.key === item.linked.member)?.colorName} {item.linked.poseName}
+          <button onClick={() => onConfirmLink(listKey, item.id)} className="trade-mini-btn trade-mini-btn--confirm" style={{ marginLeft: "0.4rem" }}>確定リストへ</button>
+        </div>
+      )}
+
+      {linking && (
+        <div className="trade-confirm-editor">
+          <label className="trade-partner-label">{otherListLabel}から選ぶ</label>
+          {otherItems.length === 0 && <p className="trade-partner-display">候補がありません</p>}
+          <div className="trade-link-candidates">
+            {otherItems.map((o) => {
+              const om = MEMBERS.find((mm) => mm.key === o.member) || MEMBERS[0];
+              return (
+                <button key={o.id} type="button" onClick={() => handlePickLink(o)} className="trade-link-candidate" style={{ borderColor: om.accentSoft }}>
+                  {om.emoji}{om.colorName} {o.poseName}
+                </button>
+              );
+            })}
+          </div>
+          {item.linked && (
+            <button onClick={handleClearLink} className="trade-restore-btn" style={{ marginTop: "0.3rem" }}>リンク解除</button>
+          )}
+        </div>
+      )}
+
+      {listKey === "got" && (item.holdFor || []).length > 0 && !holding && (
+        <div className="trade-info-line">🔖 取り置き中：{(item.holdFor || []).map((h) => h.userName || h.name || "-").join(" ／ ")}</div>
+      )}
+
+      {holding && (
+        <div className="trade-confirm-editor">
+          <label className="trade-partner-label">誰のために取り置きますか（複数選択可）</label>
+          {matches.length === 0 && <p className="trade-partner-display">候補がありません</p>}
+          {matches.map((mt) => (
+            <label key={mt.id} className="checkbox-label" style={{ display: "flex", marginBottom: "0.2rem" }}>
+              <input type="checkbox" checked={holdSelected.includes(mt.id)} onChange={() => toggleHoldMatch(mt.id)} />
+              {mt.userName || "-"} ／ {mt.name || "-"}
+            </label>
+          ))}
+          {holdCustoms.map((c, idx) => (
+            <div key={idx} className="trade-confirm-row" style={{ marginTop: "0.2rem" }}>
+              <span className="trade-confirm-pose">{c.userName || "-"} ／ {c.name || "-"}</span>
+              <button onClick={() => removeHoldCustom(idx)} className="trade-row-del">✕</button>
+            </div>
+          ))}
+          <div className="trade-partner-custom-row" style={{ marginTop: "0.3rem" }}>
+            <input value={holdCustomUserName} onChange={(e) => setHoldCustomUserName(e.target.value)} placeholder="ユーザー名" />
+            <input value={holdCustomName} onChange={(e) => setHoldCustomName(e.target.value)} placeholder="名前" />
+          </div>
+          <button onClick={addHoldCustom} className="trade-restore-btn" style={{ marginBottom: "0.35rem" }}>＋ 自由入力を追加</button>
+          <button onClick={handleSaveHold} className="btn-save-mini">この内容で取り置く</button>
+        </div>
+      )}
+
+      {listKey === "want" && (item.userName || item.name) && !editingInfo && (
+        <div className="trade-info-line">👤 {item.userName || "-"} ／ 📛 {item.name || "-"}</div>
+      )}
+
+      {editingInfo && (
+        <div className="trade-confirm-editor">
+          <label className="trade-partner-label">求めている人</label>
+          {matches.length > 0 ? (
+            <select value={infoChoice} onChange={(e) => setInfoChoice(e.target.value)} className="trade-partner-select">
+              {matches.map((mt) => (
+                <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
+              ))}
+              <option value="custom">その他（自由入力）</option>
+            </select>
+          ) : (
+            <p className="trade-partner-display">候補なし（自由入力してください）</p>
+          )}
+          {infoChoice === "custom" && (
+            <div className="trade-partner-custom-row">
+              <input value={infoUserName} onChange={(e) => setInfoUserName(e.target.value)} placeholder="ユーザー名" />
+              <input value={infoName} onChange={(e) => setInfoName(e.target.value)} placeholder="名前" />
+            </div>
+          )}
+          <button onClick={handleSaveInfo} className="btn-save-mini">保存する</button>
+        </div>
+      )}
+
+      {editing && (
+        <div className="trade-confirm-editor">
+          <div className="trade-mode-row">
+            <button type="button" onClick={() => setMode("exchange")} className={`filter-toggle${mode === "exchange" ? " active" : ""}`}>🔁 交換</button>
+            <button type="button" onClick={() => setMode("price")} className={`filter-toggle${mode === "price" ? " active" : ""}`}>💰 定価</button>
+          </div>
+          {mode === "exchange" ? (
+            <div className="trade-input-row">
+              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                {MEMBERS.map((mm) => (
+                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                ))}
+              </select>
+              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
+            </div>
+          ) : (
+            <div className="trade-amount-row">
+              <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
+              <span className="trade-amount-value">+{amount}枚{priceSuffix}</span>
+              <button type="button" onClick={() => setAmount((a) => a + 1)} className="trade-amount-btn">＋</button>
+            </div>
+          )}
+
+          <div className="trade-partner-block">
+            <label className="trade-partner-label">交換相手</label>
+            {matches.length > 0 ? (
+              <select value={partnerChoice} onChange={(e) => setPartnerChoice(e.target.value)} className="trade-partner-select">
+                {matches.map((mt) => (
+                  <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
+                ))}
+                <option value="custom">その他（自分で入力）</option>
+              </select>
+            ) : (
+              <p className="trade-partner-display">候補なし（自分で入力してください）</p>
+            )}
+            {partnerChoice === "custom" && (
+              <div className="trade-partner-custom-row">
+                <input value={customUserName} onChange={(e) => setCustomUserName(e.target.value)} placeholder="ユーザー名" />
+                <input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="名前" />
+              </div>
+            )}
+          </div>
+
+          <button onClick={handleSaveConfirm} className="btn-save-mini">この内容で確定する</button>
+        </div>
+      )}
+
+      {matches.map((rec) => (
+        <div key={rec.id} className="trade-match">
+          🙋 求めている人：{rec.userName || "-"}<CopyUserNameButton userName={rec.userName} /> ／ {rec.name || "-"}
+          {(rec.hasAchievement || rec.friendFlag || rec.ffFlag || rec.dangerFlag) && (
+            <span style={{ marginLeft: "0.35rem" }}>
+              {rec.hasAchievement && "🏆"}
+              {rec.friendFlag && "🤝"}
+              {rec.ffFlag && "🔁"}
+              {rec.dangerFlag && "⚠️"}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TradeSection({ title, emoji, listKey, items, otherItems, records, allPoseNames, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onSetHoldFor, onConfirmLink }) {
+  const [member, setMember] = useState(MEMBERS[0].key);
+  const [poseName, setPoseName] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
+  const theme = MEMBERS.find((m) => m.key === member);
+  const suggestions = useMemo(() => getSuggestions(poseName, allPoseNames), [poseName, allPoseNames]);
+
+  const handleAdd = () => {
+    if (!poseName.trim()) return;
+    onAdd(listKey, { member, poseName: poseName.trim() });
+    setPoseName("");
+    setShowSuggestions(false);
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  const findMatches = (item) =>
+    records.filter((r) => r.member === item.member && r.poseName.trim().toLowerCase() === item.poseName.trim().toLowerCase());
+
+  const memberOrderIndex = (key) => MEMBERS.findIndex((m) => m.key === key);
+  const sortByMember = (arr) => [...arr].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
+
+  const displayItems = listKey === "want" ? sortByMember(items) : items;
+
+  return (
+    <div className="trade-section">
+      <h3 className="trade-section-title">{emoji} {title}</h3>
+      <div className="trade-input-row">
+        <select value={member} onChange={(e) => setMember(e.target.value)} className="trade-select" style={{ borderColor: theme.accentSoft }}>
+          {MEMBERS.map((m) => (
+            <option key={m.key} value={m.key}>{m.emoji} {m.label}</option>
+          ))}
+        </select>
+        <input
+          ref={inputRef}
+          value={poseName}
+          onChange={(e) => { setPoseName(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onKeyDown={handleKeyDown}
+          placeholder="ポーズ名を入力してEnter"
+          className="trade-input"
+          style={{ borderColor: theme.accentSoft }}
+        />
+        <button onClick={handleAdd} className="trade-add-btn" style={{ background: theme.accent }}>＋</button>
+      </div>
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="suggestion-list" style={{ marginBottom: "0.4rem" }}>
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => { setPoseName(s); setShowSuggestions(false); if (inputRef.current) inputRef.current.focus(); }}
+              className="suggestion-chip"
+              style={{ background: theme.accentSoft, color: theme.text }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {items.length === 0 && <p className="trade-empty">まだありません</p>}
+      <div className="trade-list">
+        {displayItems.map((item) => (
+          <TradeItemRow
+            key={item.id}
+            item={item}
+            listKey={listKey}
+            matches={findMatches(item)}
+            otherItems={otherItems}
+            onDeleteItem={onDeleteItem}
+            onConfirm={onConfirm}
+            onComplete={onComplete}
+            onUpdateInfo={onUpdateInfo}
+            onSetLinked={onSetLinked}
+            onSetHoldFor={onSetHoldFor}
+            onConfirmLink={onConfirmLink}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TradePostOutput({ wantItems }) {
+  const [output, setOutput] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerate = () => {
+    const memberOrderIndex = (key) => MEMBERS.findIndex((mm) => mm.key === key);
+    const sorted = [...wantItems].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
+    const lines = sorted.map((item) => {
+      const m = MEMBERS.find((mm) => mm.key === item.member);
+      let line = `△${m ? m.colorName : ""}　${item.poseName}`;
+      if (item.linked) {
+        const lm = MEMBERS.find((mm) => mm.key === item.linked.member);
+        line += `　（△の△${lm ? lm.colorName : ""}　${item.linked.poseName}）`;
+      }
+      return line;
+    });
+    setOutput(lines.join("\n"));
+    setCopied(false);
+  };
+
+  const handleCopy = async () => {
+    if (!output) return;
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      alert("コピーに失敗しました");
+    }
+  };
+
+  return (
+    <div className="trade-post-card">
+      <h3 className="io-card-title">📮 ポスト用出力</h3>
+      <p className="io-card-desc">「探してるものリスト」の内容をテキスト化します。</p>
+      <button onClick={handleGenerate} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>出力する</button>
+      {output && (
+        <>
+          <textarea readOnly value={output} className="trade-output-area" rows={Math.min(12, output.split("\n").length + 1)} />
+          <button onClick={handleCopy} className="btn-export" style={{ background: "#6FB3EE" }}>{copied ? "✅ コピーしました" : "📋 コピーする"}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
+  return (
+    <div className="trade-section">
+      <h3 className="trade-section-title">✅ 取引済みリスト</h3>
+      {doneItems.length === 0 && <p className="trade-empty">まだありません</p>}
+      <div className="trade-list">
+        {doneItems.map((it) => {
+          const m = MEMBERS.find((mm) => mm.key === it.member) || MEMBERS[0];
+          const label = formatConfirmLabel(it.origin, it.confirm);
+          return (
+            <div key={it.id} className="trade-row-wrap">
+              <div className="trade-row" style={{ borderLeftColor: m.accent, opacity: 0.75 }}>
+                <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+                <span className="trade-row-pose">{it.poseName}</span>
+                <span className="trade-done-origin">{it.origin === "got" ? "🎯" : "🔍"}</span>
+                <button onClick={() => onRestoreDone(it.id)} className="trade-restore-btn">↩️ 戻す</button>
+                <button onClick={() => onDeleteDone(it.id)} className="trade-row-del">✕</button>
+              </div>
+              {label && <div className="trade-confirm-row-label">{label}</div>}
+              {it.confirm && (it.confirm.partnerUserName || it.confirm.partnerName) && (
+                <div className="trade-confirm-row-label">🤝 {it.confirm.partnerUserName || "-"} ／ {it.confirm.partnerName || "-"}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onDeleteDone, onClearAll, onUpdateInfo, onSetLinked, onSetHoldFor, onConfirmLink, onRestoreDone }) {
+  const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+  return (
+    <div>
+      <div className="flex-between">
+        <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>本日の取引 🔄</h2>
+        <button onClick={onClearAll} className="btn-danger-outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.65rem" }}>🗑️ 全部削除</button>
+      </div>
+
+      <TradeSection
+        title="引いたポーズ"
+        emoji="🎯"
+        listKey="got"
+        items={trades.got}
+        otherItems={trades.want}
+        records={records}
+        allPoseNames={allPoseNames}
+        onAdd={onAdd}
+        onDeleteItem={onDeleteItem}
+        onConfirm={onConfirm}
+        onComplete={onComplete}
+        onUpdateInfo={onUpdateInfo}
+        onSetLinked={onSetLinked}
+        onSetHoldFor={onSetHoldFor}
+        onConfirmLink={onConfirmLink}
+      />
+
+      <TradeSection
+        title="探してるものリスト"
+        emoji="🔍"
+        listKey="want"
+        items={trades.want}
+        otherItems={trades.got}
+        records={records}
+        allPoseNames={allPoseNames}
+        onAdd={onAdd}
+        onDeleteItem={onDeleteItem}
+        onConfirm={onConfirm}
+        onComplete={onComplete}
+        onUpdateInfo={onUpdateInfo}
+        onSetLinked={onSetLinked}
+        onSetHoldFor={onSetHoldFor}
+        onConfirmLink={onConfirmLink}
+      />
+
+      <TradePostOutput wantItems={trades.want} />
+
+      <TradeDoneList doneItems={trades.done} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} />
+    </div>
+  );
+}
+
+function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState(item.confirm.mode);
+  const [exMember, setExMember] = useState(item.confirm.member || MEMBERS[0].key);
+  const [exPose, setExPose] = useState(item.confirm.poseName || "");
+  const [amount, setAmount] = useState(item.confirm.amount || 0);
+  const [partnerUserName, setPartnerUserName] = useState(item.confirm.partnerUserName || "");
+  const [partnerName, setPartnerName] = useState(item.confirm.partnerName || "");
+
+  const priceSuffix = item.origin === "want" ? "で買い取る" : "で譲る";
+
+  const handleSave = () => {
+    const confirm =
+      mode === "exchange"
+        ? { mode: "exchange", member: exMember, poseName: exPose.trim(), partnerUserName: partnerUserName.trim(), partnerName: partnerName.trim() }
+        : { mode: "price", amount, partnerUserName: partnerUserName.trim(), partnerName: partnerName.trim() };
+    onUpdate(item.id, { confirm });
+    setEditing(false);
+  };
+
+  return (
+    <div className="trade-row-wrap">
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <input type="checkbox" checked={!!item.checked} onChange={(e) => onUpdate(item.id, { checked: e.target.checked })} />
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+        <div className="trade-row-btns">
+          <button onClick={onMoveUp} disabled={isFirst} className="trade-order-btn">▲</button>
+          <button onClick={onMoveDown} disabled={isLast} className="trade-order-btn">▼</button>
+        </div>
+      </div>
+
+      <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
+      {(item.confirm.partnerUserName || item.confirm.partnerName) && (
+        <div className="trade-confirm-row-label">
+          🤝 {item.confirm.partnerUserName || "-"}<CopyUserNameButton userName={item.confirm.partnerUserName} /> ／ {item.confirm.partnerName || "-"}
+        </div>
+      )}
+
+      <div className="trade-date-row">
+        <label className="trade-partner-label" style={{ marginBottom: 0 }}>取引日</label>
+        <input type="date" value={item.date || ""} onChange={(e) => onUpdate(item.id, { date: e.target.value })} className="trade-date-input" />
+      </div>
+
+      <div className="trade-row-btns" style={{ marginTop: "0.35rem", marginLeft: "0.5rem" }}>
+        <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
+        <button onClick={() => onComplete(item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
+        <button onClick={() => onRestore(item.id)} className="trade-restore-btn">↩️ 戻す</button>
+        <button onClick={() => onDelete(item.id)} className="trade-row-del">✕</button>
+      </div>
+
+      {editing && (
+        <div className="trade-confirm-editor">
+          <div className="trade-mode-row">
+            <button type="button" onClick={() => setMode("exchange")} className={`filter-toggle${mode === "exchange" ? " active" : ""}`}>🔁 交換</button>
+            <button type="button" onClick={() => setMode("price")} className={`filter-toggle${mode === "price" ? " active" : ""}`}>💰 定価</button>
+          </div>
+          {mode === "exchange" ? (
+            <div className="trade-input-row">
+              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                {MEMBERS.map((mm) => (
+                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                ))}
+              </select>
+              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder="交換するハピカ" className="trade-input" />
+            </div>
+          ) : (
+            <div className="trade-amount-row">
+              <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
+              <span className="trade-amount-value">+{amount}枚{priceSuffix}</span>
+              <button type="button" onClick={() => setAmount((a) => a + 1)} className="trade-amount-btn">＋</button>
+            </div>
+          )}
+          <div className="trade-partner-custom-row">
+            <input value={partnerUserName} onChange={(e) => setPartnerUserName(e.target.value)} placeholder="ユーザー名" />
+            <input value={partnerName} onChange={(e) => setPartnerName(e.target.value)} placeholder="名前" />
+          </div>
+          <button onClick={handleSave} className="btn-save-mini">保存する</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove }) {
+  const handlePrintLabels = () => {
+    const checkedItems = confirmedItems.filter((it) => it.checked);
+    if (checkedItems.length === 0) {
+      alert("印刷するレコードにチェックを入れてください");
+      return;
+    }
+    if (typeof XLSX === "undefined") {
+      alert("ラベル印刷機能の読み込みに失敗しました。通信環境を確認してください。");
+      return;
+    }
+    const rows = checkedItems.map((it) => ({
+      "日付": it.date || "",
+      "ID": it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "",
+      "枚数": it.confirm.mode === "price" ? it.confirm.amount : "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ラベル");
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    XLSX.writeFile(wb, `label-print-${dateStr}.xlsx`);
+  };
+
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>確定リスト 📝</h2>
+      <div className="trade-section">
+        {confirmedItems.length === 0 && <p className="trade-empty">まだありません</p>}
+        <div className="trade-list">
+          {confirmedItems.map((item, idx) => (
+            <ConfirmedItemRow
+              key={item.id}
+              item={item}
+              onUpdate={onUpdate}
+              onRestore={onRestore}
+              onComplete={onComplete}
+              onDelete={onDelete}
+              onMoveUp={() => onMove(item.id, -1)}
+              onMoveDown={() => onMove(item.id, 1)}
+              isFirst={idx === 0}
+              isLast={idx === confirmedItems.length - 1}
+            />
+          ))}
+        </div>
+        <button onClick={handlePrintLabels} className="btn-export" style={{ background: "#6FB3EE", marginTop: "0.6rem" }}>🏷️ ラベルプリント（チェックしたものだけ）</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- メインアプリ ----------
+function App() {
+  const [records, setRecords] = useState(() => loadRecords());
+  const [trades, setTrades] = useState(() => loadTrades());
+  const [activeTab, setActiveTab] = useState("home");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+
+  const persist = (newRecords) => {
+    setRecords(newRecords);
+    saveRecords(newRecords);
+  };
+
+  const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+
+  const handleSave = (data) => {
+    let newRecords;
+    if (data.id) {
+      newRecords = records.map((r) => (r.id === data.id ? { ...r, ...data } : r));
+    } else {
+      const newRec = { ...data, id: makeId(), createdAt: Date.now() };
+      newRecords = [newRec, ...records];
+    }
+    persist(newRecords);
+    setModalOpen(false);
+    setEditingRecord(null);
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("このレコードを削除しますか？")) return;
+    persist(records.filter((r) => r.id !== id));
+  };
+
+  const handleEdit = (record) => {
+    setEditingRecord(record);
+    setModalOpen(true);
+  };
+
+  const handleImport = (mergedRecords) => {
+    persist(mergedRecords);
+  };
+
+  const handleDuplicate = (record) => {
+    const newRec = { ...record, id: makeId(), poseName: "", createdAt: Date.now() };
+    persist([newRec, ...records]);
+  };
+
+  const persistTrades = (newTrades) => {
+    setTrades(newTrades);
+    saveTrades(newTrades);
+  };
+
+  const handleAddTrade = (listKey, item) => {
+    const newItem = { ...item, id: makeId(), createdAt: Date.now(), holdFor: [], userName: "", name: "", linked: null };
+    persistTrades({ ...trades, [listKey]: [newItem, ...trades[listKey]] });
+  };
+
+  const handleDeleteTradeItem = (listKey, id) => {
+    persistTrades({ ...trades, [listKey]: trades[listKey].filter((t) => t.id !== id) });
+  };
+
+  const handleUpdateTradeItemInfo = (listKey, id, info) => {
+    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, userName: info.userName, name: info.name } : it));
+    persistTrades({ ...trades, [listKey]: newList });
+  };
+
+  const handleSetHoldFor = (id, holdFor) => {
+    const newList = trades.got.map((it) => (it.id === id ? { ...it, holdFor } : it));
+    persistTrades({ ...trades, got: newList });
+  };
+
+  const handleSetLinked = (listKey, id, linked) => {
+    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, linked } : it));
+    persistTrades({ ...trades, [listKey]: newList });
+  };
+
+  const handleConfirmTradeItem = (listKey, id, confirmDetail) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item) return;
+    const confirmedItem = {
+      id: makeId(),
+      origin: listKey,
+      member: item.member,
+      poseName: item.poseName,
+      confirm: confirmDetail,
+      date: "",
+      checked: false,
+      createdAt: Date.now(),
+    };
+    const newList = trades[listKey].filter((it) => it.id !== id);
+    persistTrades({ ...trades, [listKey]: newList, confirmed: [confirmedItem, ...trades.confirmed] });
+  };
+
+  const handleConfirmLink = (listKey, id) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item || !item.linked) return;
+    handleConfirmTradeItem(listKey, id, {
+      mode: "exchange",
+      member: item.linked.member,
+      poseName: item.linked.poseName,
+      partnerUserName: item.linked.partnerUserName || "",
+      partnerName: item.linked.partnerName || "",
+    });
+  };
+
+  const handleUpdateConfirmed = (id, updates) => {
+    const newList = trades.confirmed.map((it) => (it.id === id ? { ...it, ...updates } : it));
+    persistTrades({ ...trades, confirmed: newList });
+  };
+
+  const handleMoveConfirmed = (id, direction) => {
+    const list = [...trades.confirmed];
+    const idx = list.findIndex((it) => it.id === id);
+    const targetIdx = idx + direction;
+    if (idx === -1 || targetIdx < 0 || targetIdx >= list.length) return;
+    [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+    persistTrades({ ...trades, confirmed: list });
+  };
+
+  const handleRestoreConfirmed = (id) => {
+    const item = trades.confirmed.find((it) => it.id === id);
+    if (!item) return;
+    const restored = { id: makeId(), member: item.member, poseName: item.poseName, createdAt: Date.now(), holdFor: [], userName: "", name: "", linked: null };
+    const newConfirmed = trades.confirmed.filter((it) => it.id !== id);
+    persistTrades({ ...trades, confirmed: newConfirmed, [item.origin]: [restored, ...trades[item.origin]] });
+  };
+
+  const handleCompleteConfirmed = (id) => {
+    const item = trades.confirmed.find((it) => it.id === id);
+    if (!item) return;
+    const doneItem = { ...item, completedAt: Date.now() };
+    const newConfirmed = trades.confirmed.filter((it) => it.id !== id);
+    persistTrades({ ...trades, confirmed: newConfirmed, done: [doneItem, ...trades.done] });
+  };
+
+  const handleDeleteConfirmed = (id) => {
+    persistTrades({ ...trades, confirmed: trades.confirmed.filter((it) => it.id !== id) });
+  };
+
+  const handleCompleteTradeItem = (listKey, id) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item) return;
+    const doneItem = { id: item.id, origin: listKey, member: item.member, poseName: item.poseName, confirm: null, date: "", completedAt: Date.now() };
+    const newList = trades[listKey].filter((it) => it.id !== id);
+    persistTrades({ ...trades, [listKey]: newList, done: [doneItem, ...trades.done] });
+  };
+
+  const handleDeleteDoneItem = (id) => {
+    persistTrades({ ...trades, done: trades.done.filter((it) => it.id !== id) });
+  };
+
+  const handleRestoreDoneItem = (id) => {
+    const item = trades.done.find((it) => it.id === id);
+    if (!item) return;
+    const newDone = trades.done.filter((it) => it.id !== id);
+    if (item.confirm) {
+      const restoredConfirmed = {
+        id: item.id,
+        origin: item.origin,
+        member: item.member,
+        poseName: item.poseName,
+        confirm: item.confirm,
+        date: item.date || "",
+        checked: false,
+        createdAt: Date.now(),
+      };
+      persistTrades({ ...trades, done: newDone, confirmed: [restoredConfirmed, ...trades.confirmed] });
+    } else {
+      const restored = { id: item.id, member: item.member, poseName: item.poseName, createdAt: Date.now(), holdFor: [], userName: "", name: "", linked: null };
+      persistTrades({ ...trades, done: newDone, [item.origin]: [restored, ...trades[item.origin]] });
+    }
+  };
+
+  const handleClearTrades = () => {
+    if (!window.confirm("本日の取引内容をすべて削除しますか？")) return;
+    persistTrades({ got: [], want: [], confirmed: [], done: [] });
+  };
+
+  const handleClearAll = () => {
+    if (!window.confirm("本当にすべてのデータを削除しますか？この操作は取り消せません。")) return;
+    persist([]);
+  };
+
+  const theme = getTheme(activeTab);
+
+  return (
+    <div className="app-shell" style={{ background: `linear-gradient(180deg, ${theme.accentSoft} 0%, #FFFDFB 220px)` }}>
+      <div className="container">
+        <div className="header">
+          <h1 className="app-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: "#C24A6E" }}>求めリスト</h1>
+          <p className="app-subtitle">かわいくポーズをきろくしよう</p>
+        </div>
+
+        <div className="tab-bar no-scrollbar">
+          {TABS.map((t) => {
+            const isActive = activeTab === t.key;
+            const tTheme = getTheme(t.key);
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className="tab-btn"
+                style={isActive ? { background: tTheme.accent, color: "#fff" } : { background: "#fff", color: tTheme.text, border: `2px solid ${tTheme.accentSoft}` }}
+              >
+                {t.emoji} {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === "home" && (
+          <HomeTab records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} onAddClick={() => { setEditingRecord(null); setModalOpen(true); }} />
+        )}
+        {activeTab === "search" && <SearchTab records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />}
+        {activeTab === "trades" && (
+          <TradeTab
+            records={records}
+            trades={trades}
+            onAdd={handleAddTrade}
+            onDeleteItem={handleDeleteTradeItem}
+            onConfirm={handleConfirmTradeItem}
+            onComplete={handleCompleteTradeItem}
+            onDeleteDone={handleDeleteDoneItem}
+            onClearAll={handleClearTrades}
+            onUpdateInfo={handleUpdateTradeItemInfo}
+            onSetLinked={handleSetLinked}
+            onSetHoldFor={handleSetHoldFor}
+            onConfirmLink={handleConfirmLink}
+            onRestoreDone={handleRestoreDoneItem}
+          />
+        )}
+        {activeTab === "confirmed" && (
+          <ConfirmedTab
+            confirmedItems={trades.confirmed}
+            onUpdate={handleUpdateConfirmed}
+            onRestore={handleRestoreConfirmed}
+            onComplete={handleCompleteConfirmed}
+            onDelete={handleDeleteConfirmed}
+            onMove={handleMoveConfirmed}
+          />
+        )}
+        {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} />}
+        {MEMBERS.map((m) => activeTab === m.key && (
+          <MemberTab key={m.key} memberConfig={m} records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />
+        ))}
+      </div>
+
+      {modalOpen && (
+        <RecordFormModal
+          initial={editingRecord}
+          allPoseNames={allPoseNames}
+          onSave={handleSave}
+          onCancel={() => { setModalOpen(false); setEditingRecord(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
