@@ -1385,8 +1385,8 @@ function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete }) {
       <div
         className="trade-row"
         style={{
-          borderLeftColor: item.linkPairId ? getPairColor(item.linkPairId) : m.accent,
-          background: item.linkPairId ? `${getPairColor(item.linkPairId)}14` : undefined,
+          borderLeftColor: m.accent,
+          background: item.linkPairId ? `${getPairColor(item.linkPairId)}33` : undefined,
         }}
       >
         <input type="checkbox" checked={!!item.checked} onChange={(e) => onUpdate(item.id, { checked: e.target.checked })} />
