@@ -1599,21 +1599,10 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
       return;
     }
 
-    const grouped = {};
-    const order = [];
-    checkedItems.forEach((it) => {
-      const buyer = it.confirm.partnerUserName || it.confirm.partnerName || "不明";
-      const desc = it.confirm.mode === "exchange" ? `${it.confirm.poseName}1枚` : `${it.confirm.amount}枚`;
-      if (!grouped[buyer]) {
-        grouped[buyer] = [];
-        order.push(buyer);
-      }
-      grouped[buyer].push(desc);
-    });
-
-    const rows = order.map((buyer) => ({
-      "ID": `${buyer} 様`,
-      "内容": grouped[buyer].join("、"),
+    const rows = checkedItems.map((it) => ({
+      "日付": it.date || "",
+      "ID": it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "",
+      "交換or枚数": it.confirm.mode === "exchange" ? it.confirm.poseName : `${it.confirm.amount}枚`,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
