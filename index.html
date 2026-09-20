@@ -1599,10 +1599,18 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
       return;
     }
 
+    const formatShortDate = (isoDate) => {
+      if (!isoDate) return "";
+      const parts = isoDate.split("-");
+      if (parts.length !== 3) return isoDate;
+      const [, m, d] = parts;
+      return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
+    };
+
     const rows = checkedItems.map((it) => ({
-      "日付": it.date || "",
+      "日付": formatShortDate(it.date),
       "ID": it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "",
-      "交換or枚数": it.confirm.mode === "exchange" ? it.confirm.poseName : `${it.confirm.amount}枚`,
+      "交換or枚数": it.confirm.mode === "exchange" ? "交換" : `${it.confirm.amount + 1}枚`,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
