@@ -153,6 +153,7 @@
   .trade-mini-btn--secondary:hover{ background:#D3F0DE; }
   .trade-date-row{ display:flex; align-items:center; gap:0.4rem; margin:0.3rem 0 0 0.5rem; }
   .trade-date-input{ padding:0.22rem 0.4rem; border-radius:0.5rem; border:2px solid var(--gray-200); font-size:0.72rem; }
+  .trade-date-input-inline{ padding:0.1rem 0.3rem; border-radius:0.45rem; border:2px solid var(--gray-200); font-size:0.68rem; flex-shrink:0; max-width:7.5rem; }
 
   .trade-confirm-editor{ margin:0.3rem 0 0.3rem 0.4rem; padding:0.45rem 0.5rem; background:#FAFAFA; border-radius:0.5rem; border:1px dashed var(--gray-300); }
   .trade-mode-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
@@ -324,6 +325,13 @@ function formatConfirmLabel(origin, confirm) {
     return origin === "got" ? `譲: +${confirm.amount}枚` : `買取: +${confirm.amount}枚`;
   }
   return null;
+}
+
+const PAIR_COLORS = ["#F59E0B", "#10B981", "#3B82F6", "#EC4899", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316"];
+function getPairColor(pairId) {
+  let hash = 0;
+  for (let i = 0; i < pairId.length; i++) hash = (hash * 31 + pairId.charCodeAt(i)) >>> 0;
+  return PAIR_COLORS[hash % PAIR_COLORS.length];
 }
 
 // ---------- 小さな共通パーツ ----------
@@ -804,6 +812,11 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
   const priceSuffix = listKey === "want" ? "で買い取る" : "で譲る";
 
   const linkedItem = item.linkedId ? otherItems.find((o) => o.id === item.linkedId) : null;
+  const linkedDisplay = linkedItem
+    ? item.linkedVariant === "secondary" && linkedItem.secondaryWant
+      ? linkedItem.secondaryWant
+      : { member: linkedItem.member, poseName: linkedItem.poseName }
+    : null;
 
   const handleSaveInfo = () => {
     let userName = "";
@@ -847,7 +860,7 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
   };
 
   const handlePickLink = (candidate) => {
-    onSetLinked(listKey, item.id, candidate.id);
+    onSetLinked(listKey, item.id, candidate.id, candidate.variant || "primary");
     setLinking(false);
   };
 
@@ -855,6 +868,17 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
     onClearLinked(listKey, item.id);
     setLinking(false);
   };
+
+  const linkCandidates = useMemo(() => {
+    const flat = [];
+    otherItems.forEach((o) => {
+      flat.push({ refId: `${o.id}-primary`, id: o.id, member: o.member, poseName: o.poseName, variant: "primary" });
+      if (listKey === "got" && o.secondaryWant) {
+        flat.push({ refId: `${o.id}-secondary`, id: o.id, member: o.secondaryWant.member, poseName: o.secondaryWant.poseName, variant: "secondary" });
+      }
+    });
+    return flat;
+  }, [otherItems, listKey]);
 
   const toggleHoldMatch = (key) => {
     setHoldSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
@@ -875,8 +899,14 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
     const fromMatches = matches
       .filter((mt) => holdSelected.includes(mt.id))
       .map((mt) => ({ type: "match", key: mt.id, userName: mt.userName, name: mt.name }));
-    onSetHoldFor(item.id, [...fromMatches, ...holdCustoms]);
+    let finalCustoms = holdCustoms;
+    if (holdCustomUserName.trim() || holdCustomName.trim()) {
+      finalCustoms = [...finalCustoms, { type: "custom", userName: holdCustomUserName.trim(), name: holdCustomName.trim() }];
+    }
+    onSetHoldFor(item.id, [...fromMatches, ...finalCustoms]);
     setHolding(false);
+    setHoldCustomUserName("");
+    setHoldCustomName("");
   };
 
   const handleSaveSecondary = () => {
@@ -1019,13 +1049,13 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
           {linking && (
             <div className="trade-confirm-editor" style={{ background: "#fff" }}>
               <label className="trade-partner-label">{otherListLabel}から選ぶ</label>
-              {otherItems.length === 0 && <p className="trade-partner-display">候補がありません</p>}
+              {linkCandidates.length === 0 && <p className="trade-partner-display">候補がありません</p>}
               <div className="trade-link-candidates">
-                {otherItems.map((o) => {
+                {linkCandidates.map((o) => {
                   const om = MEMBERS.find((mm) => mm.key === o.member) || MEMBERS[0];
                   return (
-                    <button key={o.id} type="button" onClick={() => handlePickLink(o)} className="trade-link-candidate" style={{ borderColor: om.accentSoft }}>
-                      {om.emoji}{om.colorName} {o.poseName}
+                    <button key={o.refId} type="button" onClick={() => handlePickLink(o)} className="trade-link-candidate" style={{ borderColor: om.accentSoft }}>
+                      {o.variant === "secondary" ? "➕ " : ""}{om.emoji}{om.colorName} {o.poseName}
                     </button>
                   );
                 })}
@@ -1038,7 +1068,7 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
 
           {linkedItem && !linking && (
             <div className="trade-info-line" style={{ marginLeft: 0, marginBottom: "0.35rem" }}>
-              🔺 {MEMBERS.find((mm) => mm.key === linkedItem.member)?.emoji}{MEMBERS.find((mm) => mm.key === linkedItem.member)?.colorName} {linkedItem.poseName}　とリンク中
+              🔺 {MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.emoji}{MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.colorName} {linkedDisplay.poseName}　とリンク中
               <button onClick={() => onConfirmLinkedPair(listKey, item.id)} className="trade-mini-btn trade-mini-btn--confirm" style={{ marginLeft: "0.4rem" }}>確定リストへ（両方）</button>
             </div>
           )}
@@ -1352,18 +1382,24 @@ function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete }) {
 
   return (
     <div className="trade-row-wrap">
-      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+      <div
+        className="trade-row"
+        style={{
+          borderLeftColor: item.linkPairId ? getPairColor(item.linkPairId) : m.accent,
+          background: item.linkPairId ? `${getPairColor(item.linkPairId)}14` : undefined,
+        }}
+      >
         <input type="checkbox" checked={!!item.checked} onChange={(e) => onUpdate(item.id, { checked: e.target.checked })} />
         <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
         <span className="trade-row-pose">{item.poseName}</span>
+        <input type="date" value={item.date || ""} onChange={(e) => onUpdate(item.id, { date: e.target.value })} className="trade-date-input-inline" />
         <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
       </div>
 
       {item.linkPairId && (
         <div className="trade-info-line">
-          🔗 もう一方のリストと関連あり
-          <button onClick={() => handleToggleSequence("first")} className={`trade-order-btn${item.sequenceFlag === "first" ? " active" : ""}`} style={{ marginLeft: "0.4rem" }}>先</button>
-          <button onClick={() => handleToggleSequence("later")} className={`trade-order-btn${item.sequenceFlag === "later" ? " active" : ""}`}>後</button>
+          <button onClick={() => handleToggleSequence("first")} className={`trade-order-btn${item.sequenceFlag === "first" ? " active" : ""}`}>先</button>
+          <button onClick={() => handleToggleSequence("later")} className={`trade-order-btn${item.sequenceFlag === "later" ? " active" : ""}`} style={{ marginLeft: "0.3rem" }}>後</button>
         </div>
       )}
 
@@ -1373,11 +1409,6 @@ function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete }) {
           🤝 {item.confirm.partnerUserName || "-"}<CopyUserNameButton userName={item.confirm.partnerUserName} /> ／ {item.confirm.partnerName || "-"}
         </div>
       )}
-
-      <div className="trade-date-row">
-        <label className="trade-partner-label" style={{ marginBottom: 0 }}>取引日</label>
-        <input type="date" value={item.date || ""} onChange={(e) => onUpdate(item.id, { date: e.target.value })} className="trade-date-input" />
-      </div>
 
       <div className="trade-row-btns" style={{ marginTop: "0.35rem", marginLeft: "0.5rem" }}>
         <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
@@ -1542,7 +1573,7 @@ function App() {
   };
 
   const handleAddTrade = (listKey, item) => {
-    const newItem = { ...item, id: makeId(), createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, secondaryWant: null };
+    const newItem = { ...item, id: makeId(), createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, linkedVariant: null, secondaryWant: null };
     persistTrades({ ...trades, [listKey]: [newItem, ...trades[listKey]] });
   };
 
@@ -1565,9 +1596,9 @@ function App() {
     persistTrades({ ...trades, want: newList });
   };
 
-  const handleSetLinked = (listKey, id, otherId) => {
+  const handleSetLinked = (listKey, id, otherId, variant) => {
     const otherKey = listKey === "got" ? "want" : "got";
-    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: otherId } : it));
+    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: otherId, linkedVariant: variant || "primary" } : it));
     const newOther = trades[otherKey].map((it) => (it.id === otherId ? { ...it, linkedId: id } : it));
     persistTrades({ ...trades, [listKey]: newSelf, [otherKey]: newOther });
   };
@@ -1576,8 +1607,8 @@ function App() {
     const item = trades[listKey].find((it) => it.id === id);
     if (!item) return;
     const otherKey = listKey === "got" ? "want" : "got";
-    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: null } : it));
-    const newOther = item.linkedId ? trades[otherKey].map((it) => (it.id === item.linkedId ? { ...it, linkedId: null } : it)) : trades[otherKey];
+    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: null, linkedVariant: null } : it));
+    const newOther = item.linkedId ? trades[otherKey].map((it) => (it.id === item.linkedId ? { ...it, linkedId: null, linkedVariant: null } : it)) : trades[otherKey];
     persistTrades({ ...trades, [listKey]: newSelf, [otherKey]: newOther });
   };
 
@@ -1609,6 +1640,8 @@ function App() {
 
     const gotItem = listKey === "got" ? item : otherItem;
     const wantItem = listKey === "want" ? item : otherItem;
+    const gotVariant = listKey === "got" ? item.linkedVariant : otherItem.linkedVariant;
+    const wantPoseInfo = gotVariant === "secondary" && wantItem.secondaryWant ? wantItem.secondaryWant : { member: wantItem.member, poseName: wantItem.poseName };
     const partnerUserName = wantItem.userName || "";
     const partnerName = wantItem.name || "";
     const linkPairId = makeId();
@@ -1618,7 +1651,7 @@ function App() {
       origin: "got",
       member: gotItem.member,
       poseName: gotItem.poseName,
-      confirm: { mode: "exchange", member: wantItem.member, poseName: wantItem.poseName, partnerUserName, partnerName },
+      confirm: { mode: "exchange", member: wantPoseInfo.member, poseName: wantPoseInfo.poseName, partnerUserName, partnerName },
       date: "",
       checked: false,
       linkPairId,
