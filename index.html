@@ -315,6 +315,26 @@ function saveTrades(trades) {
   }
 }
 
+const ARCHIVES_STORAGE_KEY = "pose-tracker-trade-archives";
+function loadArchives() {
+  try {
+    const raw = localStorage.getItem(ARCHIVES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("読み込みに失敗しました", e);
+    return [];
+  }
+}
+function saveArchives(archives) {
+  try {
+    localStorage.setItem(ARCHIVES_STORAGE_KEY, JSON.stringify(archives));
+  } catch (e) {
+    console.error("保存に失敗しました", e);
+  }
+}
+
 function formatConfirmLabel(origin, confirm) {
   if (!confirm) return null;
   if (confirm.mode === "exchange") {
@@ -1301,14 +1321,107 @@ function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
   );
 }
 
-function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair, onClearAll }) {
+function ArchivePoseRow({ item }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  return (
+    <div className="trade-row" style={{ borderLeftColor: m.accent, marginBottom: "0.3rem" }}>
+      <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+      <span className="trade-row-pose">{item.poseName}</span>
+    </div>
+  );
+}
+
+function ArchiveConfirmedRow({ item }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  return (
+    <div className="trade-row-wrap" style={{ marginBottom: "0.3rem" }}>
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+      </div>
+      <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
+      {(item.confirm.partnerUserName || item.confirm.partnerName) && (
+        <div className="trade-confirm-row-label">🤝 {item.confirm.partnerUserName || "-"} ／ {item.confirm.partnerName || "-"}</div>
+      )}
+      {item.date && <div className="trade-confirm-row-label">📅 {item.date}</div>}
+    </div>
+  );
+}
+
+function ArchiveDetailView({ archive, onClose }) {
+  const { got, want, confirmed, done } = archive.data;
+  return (
+    <div className="trade-section">
+      <div className="flex-between" style={{ marginBottom: "0.5rem" }}>
+        <h3 className="trade-section-title" style={{ margin: 0 }}>{archive.title}</h3>
+        <button onClick={onClose} className="btn-secondary" style={{ padding: "0.25rem 0.7rem", fontSize: "0.72rem" }}>閉じる</button>
+      </div>
+      <p className="section-sub" style={{ marginBottom: "0.6rem" }}>{new Date(archive.savedAt).toLocaleString("ja-JP")}</p>
+
+      <h4 className="trade-subsection-title">🎯 引いたポーズ（{got.length}件）</h4>
+      {got.length === 0 ? <p className="trade-empty">なし</p> : got.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">🔍 探してるものリスト（{want.length}件）</h4>
+      {want.length === 0 ? <p className="trade-empty">なし</p> : want.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">📝 確定リスト（{confirmed.length}件）</h4>
+      {confirmed.length === 0 ? <p className="trade-empty">なし</p> : confirmed.map((it) => <ArchiveConfirmedRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">✅ 取引済みリスト（{done.length}件）</h4>
+      {done.length === 0 ? <p className="trade-empty">なし</p> : done.map((it) => <ArchiveConfirmedRow key={it.id} item={{ ...it, confirm: it.confirm || { mode: "price", amount: 0 } }} />)}
+    </div>
+  );
+}
+
+function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair, archives, onSaveSession }) {
   const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+  const [title, setTitle] = useState("");
+  const [showArchives, setShowArchives] = useState(false);
+  const [selectedArchiveId, setSelectedArchiveId] = useState(null);
+
+  const handleSave = () => {
+    if (!window.confirm("今回の取引を保存して、本日の取引をリセットしますか？")) return;
+    onSaveSession(title);
+    setTitle("");
+  };
+
+  const selectedArchive = archives.find((a) => a.id === selectedArchiveId);
+
   return (
     <div>
       <div className="flex-between">
         <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>本日の取引 🔄</h2>
-        <button onClick={onClearAll} className="btn-danger-outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.65rem" }}>🗑️ 全部削除</button>
       </div>
+
+      <div className="trade-section">
+        <label className="form-label">タイトル</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：9/20の取引" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft }} />
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button onClick={handleSave} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>💾 今回の取引を保存</button>
+          <button onClick={() => { setShowArchives((v) => !v); setSelectedArchiveId(null); }} className="btn-export" style={{ background: "#8B5CF6" }}>📚 過去の取引を見る</button>
+        </div>
+      </div>
+
+      {showArchives && (
+        <div className="trade-section">
+          {selectedArchive ? (
+            <ArchiveDetailView archive={selectedArchive} onClose={() => setSelectedArchiveId(null)} />
+          ) : (
+            <>
+              <h3 className="trade-section-title">📚 保存された取引</h3>
+              {archives.length === 0 && <p className="trade-empty">まだ保存された取引がありません</p>}
+              <div className="trade-list">
+                {archives.map((a) => (
+                  <button key={a.id} type="button" onClick={() => setSelectedArchiveId(a.id)} className="trade-link-candidate" style={{ width: "100%", marginBottom: "0.3rem" }}>
+                    {a.title}　<span style={{ color: "var(--gray-400)", fontWeight: 400 }}>{new Date(a.savedAt).toLocaleDateString("ja-JP")}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <TradeSection
         title="引いたポーズ"
@@ -1524,6 +1637,7 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
 function App() {
   const [records, setRecords] = useState(() => loadRecords());
   const [trades, setTrades] = useState(() => loadTrades());
+  const [archives, setArchives] = useState(() => loadArchives());
   const [activeTab, setActiveTab] = useState("home");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -1570,6 +1684,18 @@ function App() {
   const persistTrades = (newTrades) => {
     setTrades(newTrades);
     saveTrades(newTrades);
+  };
+
+  const persistArchives = (newArchives) => {
+    setArchives(newArchives);
+    saveArchives(newArchives);
+  };
+
+  const handleSaveTradeSession = (title) => {
+    const finalTitle = title.trim() || `取引 ${new Date().toLocaleDateString("ja-JP")}`;
+    const archive = { id: makeId(), title: finalTitle, savedAt: Date.now(), data: trades };
+    persistArchives([archive, ...archives]);
+    persistTrades({ got: [], want: [], confirmed: [], done: [] });
   };
 
   const handleAddTrade = (listKey, item) => {
@@ -1740,11 +1866,6 @@ function App() {
     }
   };
 
-  const handleClearTrades = () => {
-    if (!window.confirm("本日の取引内容をすべて削除しますか？")) return;
-    persistTrades({ got: [], want: [], confirmed: [], done: [] });
-  };
-
   const handleClearAll = () => {
     if (!window.confirm("本当にすべてのデータを削除しますか？この操作は取り消せません。")) return;
     persist([]);
@@ -1789,13 +1910,14 @@ function App() {
             onDeleteItem={handleDeleteTradeItem}
             onConfirm={handleConfirmTradeItem}
             onComplete={handleCompleteTradeItem}
-            onClearAll={handleClearTrades}
             onUpdateInfo={handleUpdateTradeItemInfo}
             onSetLinked={handleSetLinked}
             onClearLinked={handleClearLinked}
             onSetHoldFor={handleSetHoldFor}
             onSetSecondaryWant={handleSetSecondaryWant}
             onConfirmLinkedPair={handleConfirmLinkedPair}
+            archives={archives}
+            onSaveSession={handleSaveTradeSession}
           />
         )}
         {activeTab === "confirmed" && (
