@@ -1610,22 +1610,16 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
     const sheet = workbook.addWorksheet("データ");
     sheet.columns = [
       { header: "日付", key: "date", width: 12 },
-      { header: "アカウント", key: "account", width: 22 },
-      { header: "枚数", key: "count", width: 10 },
+      { header: "ID", key: "id", width: 22 },
+      { header: "交換or枚数", key: "detail", width: 14 },
     ];
     sheet.getRow(1).font = { bold: true };
 
     checkedItems.forEach((it) => {
-      const count = it.confirm.mode === "exchange" ? 1 : it.confirm.amount + 1;
-      sheet.addRow({ date: formatShortDate(it.date), account: it.confirm.partnerUserName || "", count });
+      const detail = it.confirm.mode === "exchange" ? "交換" : `${it.confirm.amount + 1}枚`;
+      const id = it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "";
+      sheet.addRow({ date: formatShortDate(it.date), id, detail });
     });
-
-    const lastDataRow = checkedItems.length + 1;
-    const totalRowNum = lastDataRow + 1;
-    const totalRow = sheet.getRow(totalRowNum);
-    totalRow.getCell(1).value = "合計";
-    totalRow.getCell(3).value = { formula: `SUM(C2:C${lastDataRow})` };
-    totalRow.font = { bold: true };
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/octet-stream" });
