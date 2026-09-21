@@ -9,8 +9,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
-<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js" crossorigin></script>
-<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin></script>
+<script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js" crossorigin></script>
 <style>
   :root{
     --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB;
@@ -1588,13 +1587,13 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
 
   const groups = useMemo(() => getConfirmedGroups(confirmedItems), [confirmedItems]);
 
-  const handlePrintLabels = () => {
+  const handlePrintLabels = async () => {
     const checkedItems = confirmedItems.filter((it) => it.checked);
     if (checkedItems.length === 0) {
       alert("印刷するレコードにチェックを入れてください");
       return;
     }
-    if (typeof XLSX === "undefined") {
+    if (typeof ExcelJS === "undefined") {
       alert("ラベル印刷機能の読み込みに失敗しました。通信環境を確認してください。");
       return;
     }
@@ -1607,17 +1606,39 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
       return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
     };
 
-    const rows = checkedItems.map((it) => ({
-      "日付": formatShortDate(it.date),
-      "ID": it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "",
-      "交換or枚数": it.confirm.mode === "exchange" ? "交換" : `${it.confirm.amount + 1}枚`,
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ラベル");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("データ");
+    sheet.columns = [
+      { header: "日付", key: "date", width: 12 },
+      { header: "アカウント", key: "account", width: 22 },
+      { header: "枚数", key: "count", width: 10 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    checkedItems.forEach((it) => {
+      const count = it.confirm.mode === "exchange" ? 1 : it.confirm.amount + 1;
+      sheet.addRow({ date: formatShortDate(it.date), account: it.confirm.partnerUserName || "", count });
+    });
+
+    const lastDataRow = checkedItems.length + 1;
+    const totalRowNum = lastDataRow + 1;
+    const totalRow = sheet.getRow(totalRowNum);
+    totalRow.getCell(1).value = "合計";
+    totalRow.getCell(3).value = { formula: `SUM(C2:C${lastDataRow})` };
+    totalRow.font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-    XLSX.writeFile(wb, `label-print-${dateStr}.xlsx`);
+    a.download = `label-print-${dateStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
