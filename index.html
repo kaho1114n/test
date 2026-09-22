@@ -882,6 +882,12 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
   };
 
   const handleSaveConfirm = () => {
+    if (mode === "exchange" && item.linkedId) {
+      onConfirmLinkedPair(listKey, item.id);
+      setEditing(false);
+      return;
+    }
+
     let partnerUserName = "";
     let partnerName = "";
     if (partnerChoice === "custom") {
@@ -1117,19 +1123,20 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
           {linkedItem && !linking && (
             <div className="trade-info-line" style={{ marginLeft: 0, marginBottom: "0.35rem" }}>
               🔺 {MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.emoji}{MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.colorName} {linkedDisplay.poseName}　とリンク中
-              <button onClick={() => onConfirmLinkedPair(listKey, item.id)} className="trade-mini-btn trade-mini-btn--confirm" style={{ marginLeft: "0.4rem" }}>確定リストへ（両方）</button>
             </div>
           )}
 
           {mode === "exchange" ? (
-            <div className="trade-input-row">
-              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
-                {MEMBERS.map((mm) => (
-                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
-                ))}
-              </select>
-              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
-            </div>
+            item.linkedId ? null : (
+              <div className="trade-input-row">
+                <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                  {MEMBERS.map((mm) => (
+                    <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                  ))}
+                </select>
+                <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
+              </div>
+            )
           ) : (
             <div className="trade-amount-row">
               <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
@@ -1138,25 +1145,27 @@ function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDele
             </div>
           )}
 
-          <div className="trade-partner-block">
-            <label className="trade-partner-label">交換相手</label>
-            {matches.length > 0 ? (
-              <select value={partnerChoice} onChange={(e) => setPartnerChoice(e.target.value)} className="trade-partner-select">
-                {matches.map((mt) => (
-                  <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
-                ))}
-                <option value="custom">その他（自分で入力）</option>
-              </select>
-            ) : (
-              <p className="trade-partner-display">候補なし（自分で入力してください）</p>
-            )}
-            {partnerChoice === "custom" && (
-              <div className="trade-partner-custom-row">
-                <input value={customUserName} onChange={(e) => setCustomUserName(e.target.value)} placeholder="ユーザー名" />
-                <input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="名前" />
-              </div>
-            )}
-          </div>
+          {!(mode === "exchange" && item.linkedId) && (
+            <div className="trade-partner-block">
+              <label className="trade-partner-label">交換相手</label>
+              {matches.length > 0 ? (
+                <select value={partnerChoice} onChange={(e) => setPartnerChoice(e.target.value)} className="trade-partner-select">
+                  {matches.map((mt) => (
+                    <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
+                  ))}
+                  <option value="custom">その他（自分で入力）</option>
+                </select>
+              ) : (
+                <p className="trade-partner-display">候補なし（自分で入力してください）</p>
+              )}
+              {partnerChoice === "custom" && (
+                <div className="trade-partner-custom-row">
+                  <input value={customUserName} onChange={(e) => setCustomUserName(e.target.value)} placeholder="ユーザー名" />
+                  <input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="名前" />
+                </div>
+              )}
+            </div>
+          )}
 
           <button onClick={handleSaveConfirm} className="btn-save-mini">この内容で確定する</button>
         </div>
