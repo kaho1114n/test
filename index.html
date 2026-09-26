@@ -1582,13 +1582,23 @@ function getConfirmedGroups(items) {
 }
 
 function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, archives, onSaveSession }) {
+  const [saveDate, setSaveDate] = useState("");
   const [title, setTitle] = useState("");
   const [showArchives, setShowArchives] = useState(false);
   const [selectedArchiveId, setSelectedArchiveId] = useState(null);
 
   const handleSave = () => {
-    if (!window.confirm("今回の取引を保存して、本日の取引をリセットしますか？")) return;
-    onSaveSession(title);
+    if (!saveDate) {
+      alert("保存する日付を選んでください");
+      return;
+    }
+    const matchCount = confirmedItems.filter((it) => it.date === saveDate).length + doneItems.filter((it) => it.date === saveDate).length;
+    if (matchCount === 0) {
+      alert("その日付のレコードが見つかりません");
+      return;
+    }
+    if (!window.confirm(`${saveDate} の取引（${matchCount}件）を保存して、リストから削除しますか？`)) return;
+    onSaveSession(saveDate, title);
     setTitle("");
   };
 
@@ -1649,10 +1659,12 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
       <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>確定リスト 📝</h2>
 
       <div className="trade-section">
-        <label className="form-label">タイトル</label>
+        <label className="form-label">保存する日付</label>
+        <input type="date" value={saveDate} onChange={(e) => setSaveDate(e.target.value)} className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft }} />
+        <label className="form-label">タイトル（省略可）</label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：9/20の取引" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft }} />
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button onClick={handleSave} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>💾 今回の取引を保存</button>
+          <button onClick={handleSave} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>📅 その日の取引を保存</button>
           <button onClick={() => { setShowArchives((v) => !v); setSelectedArchiveId(null); }} className="btn-export" style={{ background: "#8B5CF6" }}>📚 過去の取引を見る</button>
         </div>
       </div>
@@ -1763,11 +1775,21 @@ function App() {
     saveArchives(newArchives);
   };
 
-  const handleSaveTradeSession = (title) => {
-    const finalTitle = title.trim() || `取引 ${new Date().toLocaleDateString("ja-JP")}`;
-    const archive = { id: makeId(), title: finalTitle, savedAt: Date.now(), data: trades };
+  const handleSaveTradeSession = (date, title) => {
+    const matchedConfirmed = trades.confirmed.filter((it) => it.date === date);
+    const matchedDone = trades.done.filter((it) => it.date === date);
+    const remainingConfirmed = trades.confirmed.filter((it) => it.date !== date);
+    const remainingDone = trades.done.filter((it) => it.date !== date);
+
+    const finalTitle = title.trim() || `${date}の取引`;
+    const archive = {
+      id: makeId(),
+      title: finalTitle,
+      savedAt: Date.now(),
+      data: { got: [], want: [], confirmed: matchedConfirmed, done: matchedDone },
+    };
     persistArchives([archive, ...archives]);
-    persistTrades({ got: [], want: [], confirmed: [], done: [] });
+    persistTrades({ ...trades, confirmed: remainingConfirmed, done: remainingDone });
   };
 
   const handleAddTrade = (listKey, item) => {
