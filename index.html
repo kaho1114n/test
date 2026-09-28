@@ -207,7 +207,7 @@ const TABS = [
   { key: "home", label: "ホーム", emoji: "🏠" },
   { key: "search", label: "検索", emoji: "🔍" },
   ...MEMBERS.map((m) => ({ key: m.key, label: m.label, emoji: m.emoji, member: m })),
-  { key: "trades", label: "本日の取引", emoji: "🔄" },
+  { key: "trades", label: "引いたハピカ", emoji: "🔄" },
   { key: "confirmed", label: "確定", emoji: "📝" },
   { key: "io", label: "データ管理", emoji: "💾" },
 ];
@@ -1328,7 +1328,7 @@ function TradePostOutput({ wantItems }) {
   );
 }
 
-function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
+function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone, onUpdateDone }) {
   return (
     <div className="trade-section">
       <h3 className="trade-section-title">✅ 取引済みリスト</h3>
@@ -1342,6 +1342,7 @@ function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
               <div className="trade-row" style={{ borderLeftColor: m.accent, opacity: 0.75 }}>
                 <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
                 <span className="trade-row-pose">{it.poseName}</span>
+                <input type="date" value={it.date || ""} onChange={(e) => onUpdateDone(it.id, { date: e.target.value })} className="trade-date-input-inline" />
                 <span className="trade-done-origin">{it.origin === "got" ? "🎯" : "🔍"}</span>
                 <button onClick={() => onRestoreDone(it.id)} className="trade-restore-btn">↩️ 戻す</button>
                 <button onClick={() => onDeleteDone(it.id)} className="trade-row-del">✕</button>
@@ -1411,13 +1412,66 @@ function ArchiveDetailView({ archive, onClose }) {
   );
 }
 
-function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair }) {
+function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair, onDeleteList, onImportList }) {
   const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+  const [saveTitle, setSaveTitle] = useState("");
+  const [importMessage, setImportMessage] = useState("");
+  const fileRef = useRef(null);
+
+  const handleSaveList = () => {
+    const data = { got: trades.got, want: trades.want };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const finalTitle = saveTitle.trim() || "引いたハピカ";
+    a.download = `${finalTitle}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteList = () => {
+    if (!window.confirm("引いたポーズ・探してるものリストを削除しますか？")) return;
+    onDeleteList();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        const gotItems = Array.isArray(data.got) ? data.got : [];
+        const wantItems = Array.isArray(data.want) ? data.want : [];
+        onImportList(gotItems, wantItems);
+        setImportMessage(`✅ 引いたポーズ${gotItems.length}件・探してるもの${wantItems.length}件を読み込みました！`);
+      } catch (err) {
+        setImportMessage("❌ 読み込みに失敗しました。JSONファイルを確認してください。");
+      }
+      if (fileRef.current) fileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div>
       <div className="flex-between">
-        <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>本日の取引 🔄</h2>
+        <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>引いたハピカ 🔄</h2>
+      </div>
+
+      <div className="trade-section">
+        <label className="form-label">保存名</label>
+        <input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="例：引いたハピカ" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft }} />
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+          <button onClick={handleSaveList} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>💾 保存する</button>
+          <button onClick={handleDeleteList} className="btn-danger-outline">🗑️ リストを削除</button>
+        </div>
+        <label className="form-label">インポート</label>
+        <input ref={fileRef} type="file" accept="application/json" onChange={handleFileChange} />
+        {importMessage && <p className="io-message" style={{ marginTop: "0.4rem" }}>{importMessage}</p>}
       </div>
 
       <TradeSection
@@ -1581,7 +1635,7 @@ function getConfirmedGroups(items) {
   return groups;
 }
 
-function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, archives, onSaveSession }) {
+function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, onUpdateDone, archives, onSaveSession }) {
   const [saveDate, setSaveDate] = useState("");
   const [title, setTitle] = useState("");
   const [showArchives, setShowArchives] = useState(false);
@@ -1712,7 +1766,7 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
         <button onClick={handlePrintLabels} className="btn-export" style={{ background: "#6FB3EE", marginTop: "0.6rem" }}>🏷️ ラベルプリント（チェックしたものだけ）</button>
       </div>
 
-      <TradeDoneList doneItems={doneItems} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} />
+      <TradeDoneList doneItems={doneItems} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} onUpdateDone={onUpdateDone} />
     </div>
   );
 }
@@ -1795,6 +1849,34 @@ function App() {
   const handleAddTrade = (listKey, item) => {
     const newItem = { ...item, id: makeId(), createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, linkedVariant: null, secondaryWant: null };
     persistTrades({ ...trades, [listKey]: [newItem, ...trades[listKey]] });
+  };
+
+  const handleDeleteTradeList = () => {
+    persistTrades({ ...trades, got: [], want: [] });
+  };
+
+  const handleImportTradeList = (gotItems, wantItems) => {
+    const normalize = (it) => ({
+      ...it,
+      id: makeId(),
+      createdAt: it.createdAt || Date.now(),
+      holdFor: it.holdFor || [],
+      userName: it.userName || "",
+      name: it.name || "",
+      linkedId: null,
+      linkedVariant: null,
+      secondaryWant: it.secondaryWant || null,
+    });
+    persistTrades({
+      ...trades,
+      got: [...gotItems.map(normalize), ...trades.got],
+      want: [...wantItems.map(normalize), ...trades.want],
+    });
+  };
+
+  const handleUpdateDoneItem = (id, updates) => {
+    const newList = trades.done.map((it) => (it.id === id ? { ...it, ...updates } : it));
+    persistTrades({ ...trades, done: newList });
   };
 
   const handleDeleteTradeItem = (listKey, id) => {
@@ -2020,6 +2102,8 @@ function App() {
             onSetHoldFor={handleSetHoldFor}
             onSetSecondaryWant={handleSetSecondaryWant}
             onConfirmLinkedPair={handleConfirmLinkedPair}
+            onDeleteList={handleDeleteTradeList}
+            onImportList={handleImportTradeList}
           />
         )}
         {activeTab === "confirmed" && (
@@ -2033,6 +2117,7 @@ function App() {
             doneItems={trades.done}
             onDeleteDone={handleDeleteDoneItem}
             onRestoreDone={handleRestoreDoneItem}
+            onUpdateDone={handleUpdateDoneItem}
             archives={archives}
             onSaveSession={handleSaveTradeSession}
           />
