@@ -482,7 +482,7 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
     <div className="modal-overlay">
       <div className="modal-card">
         <h2 className="modal-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: theme.text }}>
-          {initial ? "編集する ✏️" : "あたらしく登録 ✨"}
+          {initial?.id ? "編集する ✏️" : initial ? "反映して登録 📋" : "あたらしく登録 ✨"}
         </h2>
 
         <label className="form-label">メンバー</label>
@@ -1359,17 +1359,7 @@ function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone, onUpdateDone })
   );
 }
 
-function ArchivePoseRow({ item }) {
-  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
-  return (
-    <div className="trade-row" style={{ borderLeftColor: m.accent, marginBottom: "0.3rem" }}>
-      <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
-      <span className="trade-row-pose">{item.poseName}</span>
-    </div>
-  );
-}
-
-function ArchiveConfirmedRow({ item }) {
+function ArchiveConfirmedRow({ item, onReflect }) {
   const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
   return (
     <div className="trade-row-wrap" style={{ marginBottom: "0.3rem" }}>
@@ -1377,6 +1367,7 @@ function ArchiveConfirmedRow({ item }) {
         <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
         <span className="trade-row-pose">{item.poseName}</span>
         <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+        <button onClick={() => onReflect(item)} className="trade-mini-btn trade-mini-btn--edit">📋 反映</button>
       </div>
       <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
       {(item.confirm.partnerUserName || item.confirm.partnerName) && (
@@ -1387,8 +1378,8 @@ function ArchiveConfirmedRow({ item }) {
   );
 }
 
-function ArchiveDetailView({ archive, onClose }) {
-  const { got, want, confirmed, done } = archive.data;
+function ArchiveDetailView({ archive, onClose, onReflect }) {
+  const { confirmed, done } = archive.data;
   return (
     <div className="trade-section">
       <div className="flex-between" style={{ marginBottom: "0.5rem" }}>
@@ -1397,17 +1388,11 @@ function ArchiveDetailView({ archive, onClose }) {
       </div>
       <p className="section-sub" style={{ marginBottom: "0.6rem" }}>{new Date(archive.savedAt).toLocaleString("ja-JP")}</p>
 
-      <h4 className="trade-subsection-title">🎯 引いたポーズ（{got.length}件）</h4>
-      {got.length === 0 ? <p className="trade-empty">なし</p> : got.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
-
-      <h4 className="trade-subsection-title">🔍 探してるものリスト（{want.length}件）</h4>
-      {want.length === 0 ? <p className="trade-empty">なし</p> : want.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
-
       <h4 className="trade-subsection-title">📝 確定リスト（{confirmed.length}件）</h4>
-      {confirmed.length === 0 ? <p className="trade-empty">なし</p> : confirmed.map((it) => <ArchiveConfirmedRow key={it.id} item={it} />)}
+      {confirmed.length === 0 ? <p className="trade-empty">なし</p> : confirmed.map((it) => <ArchiveConfirmedRow key={it.id} item={it} onReflect={onReflect} />)}
 
       <h4 className="trade-subsection-title">✅ 取引済みリスト（{done.length}件）</h4>
-      {done.length === 0 ? <p className="trade-empty">なし</p> : done.map((it) => <ArchiveConfirmedRow key={it.id} item={{ ...it, confirm: it.confirm || { mode: "price", amount: 0 } }} />)}
+      {done.length === 0 ? <p className="trade-empty">なし</p> : done.map((it) => <ArchiveConfirmedRow key={it.id} item={{ ...it, confirm: it.confirm || { mode: "price", amount: 0 } }} onReflect={onReflect} />)}
     </div>
   );
 }
@@ -1635,7 +1620,7 @@ function getConfirmedGroups(items) {
   return groups;
 }
 
-function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, onUpdateDone, archives, onSaveSession }) {
+function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, onUpdateDone, archives, onSaveSession, onReflect }) {
   const [saveDate, setSaveDate] = useState("");
   const [title, setTitle] = useState("");
   const [showArchives, setShowArchives] = useState(false);
@@ -1726,7 +1711,7 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
       {showArchives && (
         <div className="trade-section">
           {selectedArchive ? (
-            <ArchiveDetailView archive={selectedArchive} onClose={() => setSelectedArchiveId(null)} />
+            <ArchiveDetailView archive={selectedArchive} onClose={() => setSelectedArchiveId(null)} onReflect={onReflect} />
           ) : (
             <>
               <h3 className="trade-section-title">📚 保存された取引</h3>
@@ -1840,10 +1825,20 @@ function App() {
       id: makeId(),
       title: finalTitle,
       savedAt: Date.now(),
-      data: { got: [], want: [], confirmed: matchedConfirmed, done: matchedDone },
+      data: { confirmed: matchedConfirmed, done: matchedDone },
     };
     persistArchives([archive, ...archives]);
     persistTrades({ ...trades, confirmed: remainingConfirmed, done: remainingDone });
+  };
+
+  const handleReflectArchiveItem = (item) => {
+    setEditingRecord({
+      member: item.member,
+      poseName: item.poseName,
+      userName: item.confirm?.partnerUserName || "",
+      name: item.confirm?.partnerName || "",
+    });
+    setModalOpen(true);
   };
 
   const handleAddTrade = (listKey, item) => {
@@ -2120,6 +2115,7 @@ function App() {
             onUpdateDone={handleUpdateDoneItem}
             archives={archives}
             onSaveSession={handleSaveTradeSession}
+            onReflect={handleReflectArchiveItem}
           />
         )}
         {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} archives={archives} />}
