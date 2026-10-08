@@ -150,6 +150,7 @@
   .trade-order-btn.active{ background:var(--gray-600); color:#fff; }
   .trade-mini-btn--secondary{ background:#E6F7EC; color:#2F7D50; }
   .trade-mini-btn--secondary:hover{ background:#D3F0DE; }
+  .trade-mini-btn--secondary.active{ background:#2F7D50; color:#fff; }
   .trade-date-row{ display:flex; align-items:center; gap:0.4rem; margin:0.3rem 0 0 0.5rem; }
   .trade-date-input{ padding:0.22rem 0.4rem; border-radius:0.5rem; border:2px solid var(--gray-200); font-size:0.72rem; }
   .trade-date-input-inline{ padding:0.1rem 0.3rem; border-radius:0.45rem; border:2px solid var(--gray-200); font-size:0.68rem; flex-shrink:0; max-width:7.5rem; }
@@ -1504,7 +1505,7 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete,
   );
 }
 
-function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
+function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onMoveUp, onMoveDown, isFirst, isLast, onMail }) {
   const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
   const [editing, setEditing] = useState(false);
   const [mode, setMode] = useState(item.confirm.mode);
@@ -1565,6 +1566,7 @@ function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onM
 
       <div className="trade-row-btns" style={{ marginTop: "0.35rem", marginLeft: "0.5rem" }}>
         <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
+        <button onClick={() => onMail(item.id)} className="trade-mini-btn trade-mini-btn--hold">〒 郵送</button>
         <button onClick={() => onComplete(item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
         <button onClick={() => onRestore(item.id)} className="trade-restore-btn">↩️ 戻す</button>
         <button onClick={() => onDelete(item.id)} className="trade-row-del">✕</button>
@@ -1603,6 +1605,34 @@ function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onM
   );
 }
 
+function MailedItemRow({ item, onTogglePaid, onShip, onUnmail, onDelete }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  return (
+    <div className="trade-row-wrap">
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">〒 {item.poseName}</span>
+        <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+      </div>
+
+      <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
+      {(item.confirm.partnerUserName || item.confirm.partnerName) && (
+        <div className="trade-confirm-row-label">
+          🤝 {item.confirm.partnerUserName || "-"}<CopyUserNameButton userName={item.confirm.partnerUserName} /> ／ {item.confirm.partnerName || "-"}
+        </div>
+      )}
+      {item.date && <div className="trade-confirm-row-label">📅 {item.date}</div>}
+
+      <div className="trade-row-btns" style={{ marginTop: "0.35rem", marginLeft: "0.5rem" }}>
+        <button onClick={() => onTogglePaid(item.id)} className={`trade-mini-btn trade-mini-btn--secondary${item.paid ? " active" : ""}`}>💰 支払済</button>
+        <button onClick={() => onShip(item.id)} className="trade-mini-btn trade-mini-btn--done">📤 発送済</button>
+        <button onClick={() => onUnmail(item.id)} className="trade-restore-btn">↩️ 戻す</button>
+        <button onClick={() => onDelete(item.id)} className="trade-row-del">✕</button>
+      </div>
+    </div>
+  );
+}
+
 function getConfirmedGroups(items) {
   const groups = [];
   const seen = new Set();
@@ -1620,7 +1650,7 @@ function getConfirmedGroups(items) {
   return groups;
 }
 
-function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, onUpdateDone, archives, onSaveSession, onReflect }) {
+function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, onMail, onTogglePaid, onShip, onUnmail, doneItems, onDeleteDone, onRestoreDone, onUpdateDone, archives, onSaveSession, onReflect }) {
   const [saveDate, setSaveDate] = useState("");
   const [title, setTitle] = useState("");
   const [showArchives, setShowArchives] = useState(false);
@@ -1643,7 +1673,9 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
 
   const selectedArchive = archives.find((a) => a.id === selectedArchiveId);
 
-  const groups = useMemo(() => getConfirmedGroups(confirmedItems), [confirmedItems]);
+  const normalItems = confirmedItems.filter((it) => !it.mailed);
+  const mailedItems = confirmedItems.filter((it) => it.mailed);
+  const groups = useMemo(() => getConfirmedGroups(normalItems), [normalItems]);
 
   const handlePrintLabels = async () => {
     const checkedItems = confirmedItems.filter((it) => it.checked);
@@ -1744,11 +1776,29 @@ function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelet
                 onMoveDown={() => onMove(item.id, 1)}
                 isFirst={groupIdx === 0}
                 isLast={groupIdx === groups.length - 1}
+                onMail={onMail}
               />
             ))
           )}
         </div>
         <button onClick={handlePrintLabels} className="btn-export" style={{ background: "#6FB3EE", marginTop: "0.6rem" }}>🏷️ ラベルプリント（チェックしたものだけ）</button>
+      </div>
+
+      <div className="trade-section">
+        <h3 className="trade-section-title">〒 郵送セクション</h3>
+        {mailedItems.length === 0 && <p className="trade-empty">まだありません</p>}
+        <div className="trade-list">
+          {mailedItems.map((item) => (
+            <MailedItemRow
+              key={item.id}
+              item={item}
+              onTogglePaid={onTogglePaid}
+              onShip={onShip}
+              onUnmail={onUnmail}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
       </div>
 
       <TradeDoneList doneItems={doneItems} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} onUpdateDone={onUpdateDone} />
@@ -1922,6 +1972,8 @@ function App() {
       checked: false,
       linkPairId: null,
       sequenceFlag: null,
+      mailed: false,
+      paid: false,
       createdAt: Date.now(),
     };
     const newList = trades[listKey].filter((it) => it.id !== id);
@@ -1953,6 +2005,8 @@ function App() {
       checked: false,
       linkPairId,
       sequenceFlag: null,
+      mailed: false,
+      paid: false,
       createdAt: Date.now(),
     };
     const wantConfirmed = {
@@ -1965,6 +2019,8 @@ function App() {
       checked: false,
       linkPairId,
       sequenceFlag: null,
+      mailed: false,
+      paid: false,
       createdAt: Date.now(),
     };
 
@@ -1998,17 +2054,34 @@ function App() {
   };
 
   const handleMoveConfirmed = (id, direction) => {
-    const groups = getConfirmedGroups(trades.confirmed);
+    const mailedItems = trades.confirmed.filter((it) => it.mailed);
+    const normalItems = trades.confirmed.filter((it) => !it.mailed);
+    const groups = getConfirmedGroups(normalItems);
     const groupIdx = groups.findIndex((g) => g.some((it) => it.id === id));
     const targetIdx = groupIdx + direction;
     if (groupIdx === -1 || targetIdx < 0 || targetIdx >= groups.length) return;
     const newGroups = [...groups];
     [newGroups[groupIdx], newGroups[targetIdx]] = [newGroups[targetIdx], newGroups[groupIdx]];
-    persistTrades({ ...trades, confirmed: newGroups.flat() });
+    persistTrades({ ...trades, confirmed: [...newGroups.flat(), ...mailedItems] });
   };
 
   const handleDeleteConfirmed = (id) => {
     persistTrades({ ...trades, confirmed: trades.confirmed.filter((it) => it.id !== id) });
+  };
+
+  const handleMailConfirmed = (id) => {
+    const newList = trades.confirmed.map((it) => (it.id === id ? { ...it, mailed: true } : it));
+    persistTrades({ ...trades, confirmed: newList });
+  };
+
+  const handleUnmailConfirmed = (id) => {
+    const newList = trades.confirmed.map((it) => (it.id === id ? { ...it, mailed: false } : it));
+    persistTrades({ ...trades, confirmed: newList });
+  };
+
+  const handleTogglePaidConfirmed = (id) => {
+    const newList = trades.confirmed.map((it) => (it.id === id ? { ...it, paid: !it.paid } : it));
+    persistTrades({ ...trades, confirmed: newList });
   };
 
   const handleCompleteTradeItem = (listKey, id) => {
@@ -2038,6 +2111,8 @@ function App() {
         checked: false,
         linkPairId: item.linkPairId || null,
         sequenceFlag: item.sequenceFlag || null,
+        mailed: false,
+        paid: false,
         createdAt: Date.now(),
       };
       persistTrades({ ...trades, done: newDone, confirmed: [restoredConfirmed, ...trades.confirmed] });
@@ -2109,6 +2184,10 @@ function App() {
             onComplete={handleCompleteConfirmed}
             onDelete={handleDeleteConfirmed}
             onMove={handleMoveConfirmed}
+            onMail={handleMailConfirmed}
+            onTogglePaid={handleTogglePaidConfirmed}
+            onShip={handleCompleteConfirmed}
+            onUnmail={handleUnmailConfirmed}
             doneItems={trades.done}
             onDeleteDone={handleDeleteDoneItem}
             onRestoreDone={handleRestoreDoneItem}
